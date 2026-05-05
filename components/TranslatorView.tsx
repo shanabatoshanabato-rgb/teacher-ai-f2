@@ -163,12 +163,15 @@ const TranslatorView: React.FC = () => {
   const [translated, setTranslated] = useState('');
   const [error, setError]           = useState('');
   const [copied, setCopied]         = useState(false);
+  const [liveText, setLiveText]     = useState(''); // interim transcript shown while listening
   const recognitionRef              = useRef<any>(null);
+  const finalTranscriptRef          = useRef('');   // accumulates confirmed words
 
   const reset = useCallback(() => {
     recognitionRef.current?.stop();
     window.speechSynthesis.cancel();
-    setState('idle'); setSourceText(''); setTranslated(''); setError(''); setManualText('');
+    setState('idle'); setSourceText(''); setTranslated(''); setError('');
+    setManualText(''); setLiveText(''); finalTranscriptRef.current = '';
   }, []);
 
   const translate = useCallback(async (text: string) => {
@@ -189,17 +192,46 @@ const TranslatorView: React.FC = () => {
   }, [tgtLang, isAr]);
 
   const startListening = useCallback(() => {
-    setError(''); setSourceText(''); setTranslated(''); setState('listening');
+    setError(''); setSourceText(''); setTranslated('');
+    setLiveText(''); finalTranscriptRef.current = '';
+    setState('listening');
+
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setError(isAr ? 'المتصفح لا يدعم الصوت.' : 'Speech recognition not supported.'); setState('idle'); return; }
-    const rec = new SR();
-    rec.continuous = false; rec.interimResults = false; rec.lang = srcLang.code;
+
+    const rec          = new SR();
+    rec.continuous     = true;   // keep listening until user presses Stop
+    rec.interimResults = true;   // show live partial transcript
+    rec.lang           = srcLang.code;
     recognitionRef.current = rec;
-    rec.onresult = (e: any) => translate(e.results[0][0].transcript);
-    rec.onerror  = (e: any) => { setError(`Error: ${e.error}`); setState('idle'); };
-    rec.onend    = () => { setState(s => s === 'listening' ? 'idle' : s); };
+
+    rec.onresult = (e: any) => {
+      let finalPart   = '';
+      let interimPart = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalPart += t + ' ';
+        else interimPart += t;
+      }
+      if (finalPart) finalTranscriptRef.current += finalPart;
+      setLiveText((finalTranscriptRef.current + interimPart).trim());
+    };
+
+    rec.onerror = (e: any) => {
+      if (e.error !== 'no-speech') { setError(`Error: ${e.error}`); setState('idle'); }
+    };
+    // Don't auto-translate on end — user controls it via Stop button
+    rec.onend = () => { setState(s => s === 'listening' ? 'idle' : s); };
     rec.start();
-  }, [srcLang, translate, isAr]);
+  }, [srcLang, isAr]);
+
+  // Stop listening and translate everything accumulated
+  const stopAndTranslate = useCallback(() => {
+    recognitionRef.current?.stop();
+    const text = finalTranscriptRef.current.trim() || liveText.trim();
+    if (text) translate(text);
+    else setState('idle');
+  }, [translate, liveText]);
 
   const swap = () => { const t = srcLang; setSrcLang(tgtLang); setTgtLang(t); reset(); };
   const copy = async () => { await navigator.clipboard.writeText(translated); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -214,7 +246,7 @@ const TranslatorView: React.FC = () => {
     voice:   isAr ? 'صوتي' : 'Voice',
     text:    isAr ? 'كتابة' : 'Text',
     tap:     isAr ? 'اضغط واتكلم' : 'Tap & speak',
-    listen:  isAr ? '... أستمع إليك' : '... Listening',
+    listen:  isAr ? 'تكلم... اضغط إيقاف عند الانتهاء ↓' : 'Speaking... press Stop when done ↓',
     loading: isAr ? 'جارٍ الترجمة...' : 'Translating...',
     result:  isAr ? 'الترجمة' : 'Translation',
     said:    isAr ? 'قلت' : 'You said',
@@ -324,10 +356,9 @@ const TranslatorView: React.FC = () => {
 
             {mode === 'voice' ? (
               /* VOICE MODE */
-              <div className="flex-1 flex flex-col items-center justify-center gap-8 p-8">
+              <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
                 {/* Big Mic Button */}
                 <div className="relative flex items-center justify-center">
-                  {/* Glow bg */}
                   {isListening && (
                     <div className="absolute rounded-full animate-ping"
                       style={{ width: 180, height: 180, background: 'radial-gradient(circle,rgba(6,182,212,0.15),transparent)', animationDuration: '1.5s' }} />
@@ -338,18 +369,18 @@ const TranslatorView: React.FC = () => {
                   ))}
 
                   <button
-                    onClick={isListening ? () => { recognitionRef.current?.stop(); setState('idle'); } : startListening}
+                    onClick={isListening ? stopAndTranslate : startListening}
                     disabled={isTranslating}
                     className="relative z-10 rounded-full flex items-center justify-center focus:outline-none transition-all duration-300 active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
                     style={{
                       width: 100, height: 100,
                       background: isListening
-                        ? 'linear-gradient(135deg,#06b6d4,#0891b2,#0e7490)'
+                        ? 'linear-gradient(135deg,#ef4444,#dc2626)'
                         : 'linear-gradient(135deg,#0f172a,#1e293b)',
                       boxShadow: isListening
-                        ? '0 0 80px rgba(6,182,212,0.8), 0 0 40px rgba(6,182,212,0.4), inset 0 1px 0 rgba(255,255,255,0.2)'
+                        ? '0 0 80px rgba(239,68,68,0.6), 0 0 40px rgba(239,68,68,0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
                         : '0 0 40px rgba(6,182,212,0.1), 0 8px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)',
-                      border: isListening ? '2px solid rgba(6,182,212,0.9)' : '2px solid rgba(255,255,255,0.08)',
+                      border: isListening ? '2px solid rgba(239,68,68,0.8)' : '2px solid rgba(255,255,255,0.08)',
                     }}>
                     {isTranslating
                       ? <RefreshCw className="w-9 h-9 text-indigo-400 animate-spin" />
@@ -362,9 +393,20 @@ const TranslatorView: React.FC = () => {
 
                 <Waveform active={isListening} />
 
+                {/* Live transcript box — shown while listening */}
+                {isListening && (
+                  <div className="w-full rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-4 min-h-[60px] max-h-[120px] overflow-y-auto"
+                    dir={isRTL(srcLang.code) ? 'rtl' : 'ltr'}>
+                    {liveText
+                      ? <p className="text-cyan-100 text-sm leading-relaxed font-medium">{liveText}</p>
+                      : <p className="text-slate-600 text-sm italic">{isAr ? 'تكلم الآن...' : 'Start speaking...'}</p>
+                    }
+                  </div>
+                )}
+
                 {/* Status text */}
                 <div className="text-center">
-                  <p className={`text-base font-bold transition-all duration-300 ${isListening ? 'text-cyan-300' : isTranslating ? 'text-indigo-300' : 'text-slate-600'}`}>
+                  <p className={`text-sm font-bold transition-all duration-300 ${isListening ? 'text-red-400' : isTranslating ? 'text-indigo-300' : 'text-slate-600'}`}>
                     {isTranslating ? ui.loading : isListening ? ui.listen : ui.tap}
                   </p>
                   {!isListening && !isTranslating && (
