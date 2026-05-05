@@ -209,15 +209,24 @@ const TranslatorView: React.FC = () => {
     recognitionRef.current = rec;
 
     rec.onresult = (e: any) => {
-      let finalPart   = '';
       let interimPart = '';
+      let newFinalPart = '';
+      
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        const t = e.results[i][0].transcript;
-        if (e.results[i].isFinal) finalPart += t + ' ';
-        else interimPart += t;
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          newFinalPart += transcript + ' ';
+        } else {
+          interimPart += transcript;
+        }
       }
-      if (finalPart) finalTranscriptRef.current += finalPart;
-      setLiveText((finalTranscriptRef.current + interimPart).trim());
+      
+      if (newFinalPart) {
+        finalTranscriptRef.current += newFinalPart;
+      }
+      
+      const fullText = (finalTranscriptRef.current + interimPart).trim();
+      setLiveText(fullText);
     };
 
     rec.onerror = (e: any) => {
