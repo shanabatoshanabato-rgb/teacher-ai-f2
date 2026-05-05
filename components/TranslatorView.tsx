@@ -163,9 +163,8 @@ const TranslatorView: React.FC = () => {
   const [translated, setTranslated] = useState('');
   const [error, setError]           = useState('');
   const [copied, setCopied]         = useState(false);
-  const [liveText, setLiveText]     = useState(''); // interim transcript shown while listening
+  const [liveText, setLiveText]     = useState(''); 
   const recognitionRef              = useRef<any>(null);
-  const finalTranscriptRef          = useRef('');   // accumulates confirmed words
   const isManualStopRef             = useRef(false);
 
   const reset = useCallback(() => {
@@ -173,7 +172,7 @@ const TranslatorView: React.FC = () => {
     recognitionRef.current?.stop();
     window.speechSynthesis.cancel();
     setState('idle'); setSourceText(''); setTranslated(''); setError('');
-    setManualText(''); setLiveText(''); finalTranscriptRef.current = '';
+    setManualText(''); setLiveText('');
   }, []);
 
   const translate = useCallback(async (text: string) => {
@@ -195,7 +194,7 @@ const TranslatorView: React.FC = () => {
 
   const startListening = useCallback(() => {
     setError(''); setSourceText(''); setTranslated('');
-    setLiveText(''); finalTranscriptRef.current = '';
+    setLiveText(''); 
     isManualStopRef.current = false;
     setState('listening');
 
@@ -209,24 +208,11 @@ const TranslatorView: React.FC = () => {
     recognitionRef.current = rec;
 
     rec.onresult = (e: any) => {
-      let interimPart = '';
-      let newFinalPart = '';
-      
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          newFinalPart += transcript + ' ';
-        } else {
-          interimPart += transcript;
-        }
+      let fullTranscript = '';
+      for (let i = 0; i < e.results.length; i++) {
+        fullTranscript += e.results[i][0].transcript + ' ';
       }
-      
-      if (newFinalPart) {
-        finalTranscriptRef.current += newFinalPart;
-      }
-      
-      const fullText = (finalTranscriptRef.current + interimPart).trim();
-      setLiveText(fullText);
+      setLiveText(fullTranscript.trim());
     };
 
     rec.onerror = (e: any) => {
@@ -250,8 +236,7 @@ const TranslatorView: React.FC = () => {
   const stopAndTranslate = useCallback(() => {
     isManualStopRef.current = true;
     recognitionRef.current?.stop();
-    const text = finalTranscriptRef.current.trim() || liveText.trim();
-    if (text) translate(text);
+    if (liveText.trim()) translate(liveText.trim());
     else setState('idle');
   }, [translate, liveText]);
 
