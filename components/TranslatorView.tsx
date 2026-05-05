@@ -166,8 +166,10 @@ const TranslatorView: React.FC = () => {
   const [liveText, setLiveText]     = useState(''); // interim transcript shown while listening
   const recognitionRef              = useRef<any>(null);
   const finalTranscriptRef          = useRef('');   // accumulates confirmed words
+  const isManualStopRef             = useRef(false);
 
   const reset = useCallback(() => {
+    isManualStopRef.current = true;
     recognitionRef.current?.stop();
     window.speechSynthesis.cancel();
     setState('idle'); setSourceText(''); setTranslated(''); setError('');
@@ -194,14 +196,15 @@ const TranslatorView: React.FC = () => {
   const startListening = useCallback(() => {
     setError(''); setSourceText(''); setTranslated('');
     setLiveText(''); finalTranscriptRef.current = '';
+    isManualStopRef.current = false;
     setState('listening');
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setError(isAr ? 'المتصفح لا يدعم الصوت.' : 'Speech recognition not supported.'); setState('idle'); return; }
 
     const rec          = new SR();
-    rec.continuous     = true;   // keep listening until user presses Stop
-    rec.interimResults = true;   // show live partial transcript
+    rec.continuous     = true;
+    rec.interimResults = true;
     rec.lang           = srcLang.code;
     recognitionRef.current = rec;
 
@@ -218,15 +221,25 @@ const TranslatorView: React.FC = () => {
     };
 
     rec.onerror = (e: any) => {
-      if (e.error !== 'no-speech') { setError(`Error: ${e.error}`); setState('idle'); }
+      if (e.error === 'network') setError(isAr ? 'خطأ في الشبكة.' : 'Network error.');
+      if (e.error === 'not-allowed') setError(isAr ? 'الميكروفون محجوب.' : 'Microphone blocked.');
     };
-    // Don't auto-translate on end — user controls it via Stop button
-    rec.onend = () => { setState(s => s === 'listening' ? 'idle' : s); };
+
+    rec.onend = () => {
+      // If the browser stopped it but the user didn't click Stop, RESTART.
+      if (!isManualStopRef.current) {
+        try { rec.start(); } catch (err) { console.error("Auto-restart failed:", err); }
+      } else {
+        setState(s => s === 'listening' ? 'idle' : s);
+      }
+    };
+    
     rec.start();
   }, [srcLang, isAr]);
 
   // Stop listening and translate everything accumulated
   const stopAndTranslate = useCallback(() => {
+    isManualStopRef.current = true;
     recognitionRef.current?.stop();
     const text = finalTranscriptRef.current.trim() || liveText.trim();
     if (text) translate(text);
