@@ -166,6 +166,7 @@ const TranslatorView: React.FC = () => {
   const [liveText, setLiveText]     = useState(''); 
   const recognitionRef              = useRef<any>(null);
   const isManualStopRef             = useRef(false);
+  const isProcessingRef             = useRef(false); // Guard to prevent double translation/speech
 
   const reset = useCallback(() => {
     isManualStopRef.current = true;
@@ -176,8 +177,11 @@ const TranslatorView: React.FC = () => {
   }, []);
 
   const translate = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isProcessingRef.current) return;
+    
+    isProcessingRef.current = true;
     setSourceText(text); setState('translating'); setError('');
+    
     try {
       const name = isAr ? tgtLang.labelAr : tgtLang.label;
       const res  = await runPuterAgent(
@@ -185,10 +189,16 @@ const TranslatorView: React.FC = () => {
         undefined, undefined, 'en', false
       );
       const out = res.text.replace(/^["'`]|["'`]$/g,'').trim();
-      setTranslated(out); setState('done'); speakText(out, tgtLang.code);
+      setTranslated(out); 
+      setState('done'); 
+      
+      // Automatic speech once
+      speakText(out, tgtLang.code);
     } catch {
       setError(isAr ? 'فشلت الترجمة. حاول مرة أخرى.' : 'Translation failed. Please try again.');
       setState('idle');
+    } finally {
+      isProcessingRef.current = false;
     }
   }, [tgtLang, isAr]);
 
