@@ -224,7 +224,7 @@ const TranslatorView: React.FC = () => {
     reset:       'إعادة',
   } : {
     title:       'Live Translator',
-    subtitle:    'Speak and we'll translate instantly',
+    subtitle:    "Speak and we'll translate instantly",
     selectLang:  'Select target language',
     tapToSpeak:  'Tap to speak',
     listening:   'Listening...',
