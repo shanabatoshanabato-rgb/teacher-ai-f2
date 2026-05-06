@@ -269,8 +269,12 @@ Lesson content: ${lessonContent}`;
           );
           setAiResponse(res.text);
           setHistory(prev => [...prev, { role: 'assistant', content: res.text }]);
+          setPhase('active');
+          setIsAiSpeaking(true);
+          await puterVoice(res.text);
+          setIsAiSpeaking(false);
+          setLessonDone(true);
         } finally { setQuizLoading(false); }
-        setPhase('active');
       }
     } else {
       if (score >= 7) {
@@ -285,8 +289,12 @@ Lesson content: ${lessonContent}`;
           );
           setAiResponse(res.text);
           setHistory(prev => [...prev, { role: 'assistant', content: res.text }]);
+          setPhase('active');
+          setIsAiSpeaking(true);
+          await puterVoice(res.text);
+          setIsAiSpeaking(false);
+          setLessonDone(true);
         } finally { setQuizLoading(false); }
-        setPhase('active');
       }
     }
   };
