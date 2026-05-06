@@ -46,6 +46,7 @@ const TeacherUAEView: React.FC = () => {
   const [sessionLang,   setSessionLang]   = useState<'ar' | 'en'>(isAr ? 'ar' : 'en');
   const [errorStatus,   setErrorStatus]   = useState<string | null>(null);
   const [interactionState, setInteractionState] = useState<'explaining' | 'waiting_for_feedback' | 'quiz_mode'>('explaining');
+  const [lessonDone, setLessonDone] = useState(false); // true after initial explanation finishes
 
   // ── Quiz state ─────────────────────────────────────────────────
   const [quizQuestions,  setQuizQuestions]  = useState<QuizQuestion[]>([]);
@@ -156,8 +157,7 @@ const TeacherUAEView: React.FC = () => {
       setIsAiSpeaking(true);
       await puterVoice(res.text);
       setIsAiSpeaking(false);
-      // ← After lesson ends, show quiz prompt
-      setPhase('quiz_prompt');
+      setLessonDone(true); // ← user must manually start quiz when ready
     } catch {
       setErrorStatus(tx('عذراً، فشل جلب البيانات من الكتاب.', 'Failed to fetch data from the book.'));
       setPhase('config');
@@ -294,6 +294,7 @@ Lesson content: ${lessonContent}`;
   // ── Reset everything ───────────────────────────────────────────
   const fullReset = () => {
     handleStopVoice();
+    setLessonDone(false);
     setPhase('config'); setSessionActive(false);
     setHistory([]); setAiResponse(''); setTranscript('');
     setQuizQuestions([]); setStudentAnswers([]); setSelectedOption(null);
@@ -470,6 +471,18 @@ Lesson content: ${lessonContent}`;
               <span className="text-sm font-black text-slate-500 uppercase tracking-[0.5em]">
                 {isListening ? tx('أسمعك...', 'LISTENING...') : tx('انقر للتحدث', 'TAP TO TALK')}
               </span>
+              {/* Start Assessment — only appears after lesson voice ends, on USER click */}
+              {lessonDone && !isAiSpeaking && !isListening && !isProcessing && (
+                <button
+                  onClick={() => setPhase('quiz_prompt')}
+                  className="flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm uppercase tracking-widest text-white transition-all active:scale-95"
+                  style={{ background: 'linear-gradient(135deg,#059669,#10b981)', boxShadow: '0 0 30px rgba(16,185,129,0.35)' }}
+                  onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}>
+                  <GraduationCap className="w-5 h-5" />
+                  {tx('ابدأ التقييم عندما تكون جاهزاً', 'Start Assessment When Ready')}
+                </button>
+              )}
             </div>
           </div>
         </div>
