@@ -189,8 +189,10 @@ const TeacherUAEView: React.FC = () => {
       await puterVoice(res.text);
       setIsAiSpeaking(false);
       if (res.text.includes('؟') || res.text.includes('أ)')) setInteractionState('quiz_mode');
-    } catch (e) { console.error(e); }
-    finally { setIsProcessing(false); }
+    } catch (e) {
+      console.error(e);
+      setErrorStatus(tx('فشل الرد. حاول مجدداً.', 'Response failed. Try again.'));
+    } finally { setIsProcessing(false); }
   };
 
   const toggleMic = () => {
@@ -413,7 +415,7 @@ Lesson content: ${lessonContent}`;
               {selectedFile ? tx('المعلم يقرأ الكتاب الآن', 'AI READING BOOK') : tx('شرح ذكي', 'SMART TEACHING')}
             </span>
           </div>
-          <button onClick={() => { handleStopVoice(); setSessionActive(false); setPhase('config'); }}
+          <button onClick={fullReset}
             className="absolute top-10 right-10 p-5 bg-white/5 rounded-[1.5rem] text-slate-500 hover:text-white transition-all">
             <X className="w-6 h-6" />
           </button>
