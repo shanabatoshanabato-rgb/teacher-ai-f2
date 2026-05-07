@@ -71,7 +71,7 @@ const StudyRoomView: React.FC = () => {
     const style = document.createElement('style');
     style.textContent = AR_STYLE;
     document.head.appendChild(style);
-    
+
     return () => {
       leaveRoom();
       document.head.removeChild(style);
@@ -171,6 +171,10 @@ const StudyRoomView: React.FC = () => {
             alert(tx('تمت إزالتك من الغرفة', 'You have been removed from the room'));
             leaveRoom();
             return;
+          }
+          if (data.forceMute && !isMuted) {
+            localStreamRef.current?.getAudioTracks().forEach(track => track.enabled = false);
+            setIsMuted(true);
           }
         }
         parts.push({ id: doc.id, ...data } as Participant);
@@ -305,17 +309,28 @@ const StudyRoomView: React.FC = () => {
   };
 
   const toggleMic = () => {
-    const enabled = !isMuted;
-    localStreamRef.current?.getAudioTracks().forEach(track => track.enabled = enabled);
-    setIsMuted(!enabled);
-    updateDoc(doc(roomRef.current, 'participants', userId), { isMuted: !enabled });
+    const newMuted = !isMuted;
+    localStreamRef.current?.getAudioTracks().forEach(track => {
+      track.enabled = !newMuted;
+    });
+    setIsMuted(newMuted);
+    if (roomRef.current) {
+      updateDoc(doc(roomRef.current, 'participants', userId), { 
+        isMuted: newMuted,
+        forceMute: null // Clear force mute if toggled manually
+      });
+    }
   };
 
   const toggleCamera = () => {
-    const enabled = !isVideoOff;
-    localStreamRef.current?.getVideoTracks().forEach(track => track.enabled = enabled);
-    setIsVideoOff(!enabled);
-    updateDoc(doc(roomRef.current, 'participants', userId), { isVideoOff: !enabled });
+    const newVideoOff = !isVideoOff;
+    localStreamRef.current?.getVideoTracks().forEach(track => {
+      track.enabled = !newVideoOff;
+    });
+    setIsVideoOff(newVideoOff);
+    if (roomRef.current) {
+      updateDoc(doc(roomRef.current, 'participants', userId), { isVideoOff: newVideoOff });
+    }
   };
 
   const shareScreen = async () => {
@@ -444,7 +459,7 @@ const StudyRoomView: React.FC = () => {
               </button>
 
               <div className="relative group">
-                <button 
+                <button
                   onClick={joinRoom}
                   className="w-full h-20 bg-white/5 border border-white/10 hover:border-white/20 text-white font-black rounded-2xl flex flex-col items-center justify-center gap-1 transition-all"
                 >
@@ -503,9 +518,9 @@ const StudyRoomView: React.FC = () => {
       {/* Grid of Video Tiles */}
       <div className="flex-1 p-6 pb-28">
         <div className={`grid h-full gap-6 ${participants.length <= 1 ? 'grid-cols-1' :
-            participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
-              participants.length <= 4 ? 'grid-cols-2' :
-                'grid-cols-2 lg:grid-cols-3'
+          participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+            participants.length <= 4 ? 'grid-cols-2' :
+              'grid-cols-2 lg:grid-cols-3'
           }`}>
           {/* Local Participant */}
           <div className={`relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group ${isSharing ? 'ring-4 ring-emerald-500 animate-pulse' : ''}`}>
