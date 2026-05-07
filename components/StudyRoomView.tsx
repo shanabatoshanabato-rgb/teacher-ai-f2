@@ -660,33 +660,33 @@ const StudyRoomView: React.FC = () => {
       </div>
 
       {/* Toolbar */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-max max-w-[95vw]">
-        <div className="bg-[#0f0f12]/90 backdrop-blur-2xl px-4 md:px-8 py-3 md:py-4 rounded-[2rem] md:rounded-[2.5rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-3 md:gap-6">
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] w-max max-w-[95vw] pointer-events-auto select-none isolate">
+        <div className="bg-[#0f0f12]/95 backdrop-blur-3xl px-4 md:px-8 py-3 md:py-4 rounded-[2rem] md:rounded-[2.5rem] border border-white/20 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex items-center gap-3 md:gap-6 pointer-events-auto">
           <button
-            onClick={toggleMic}
-            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all ${isMuted ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            onClick={(e) => { e.stopPropagation(); toggleMic(); }}
+            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isMuted ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isMuted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
 
           <button
-            onClick={toggleCamera}
-            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all ${isVideoOff ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            onClick={(e) => { e.stopPropagation(); toggleCamera(); }}
+            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isVideoOff ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isVideoOff ? <VideoOff className="w-5 h-5 md:w-6 md:h-6" /> : <Camera className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
 
           <button
-            onClick={shareScreen}
-            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all ${isSharing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
+            onClick={(e) => { e.stopPropagation(); shareScreen(); }}
+            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isSharing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isSharing ? <ScreenShare className="w-5 h-5 md:w-6 md:h-6" /> : <Monitor className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
 
           {isHost && (
             <button
-              onClick={muteAll}
-              className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-white/5 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
+              onClick={(e) => { e.stopPropagation(); muteAll(); }}
+              className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-white/5 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all cursor-pointer active:scale-95 pointer-events-auto"
               title={tx('كتم صوت الجميع', 'Mute All')}
             >
               <VolumeX className="w-5 h-5 md:w-6 md:h-6" />
@@ -696,8 +696,8 @@ const StudyRoomView: React.FC = () => {
           <div className="w-px h-8 md:h-10 bg-white/10 mx-1 md:mx-2" />
 
           <button
-            onClick={leaveRoom}
-            className="p-4 md:p-5 bg-red-600 hover:bg-red-500 text-white rounded-xl md:rounded-2xl transition-all shadow-lg shadow-red-600/20"
+            onClick={(e) => { e.stopPropagation(); leaveRoom(); }}
+            className="p-4 md:p-5 bg-red-600 hover:bg-red-500 text-white rounded-xl md:rounded-2xl transition-all shadow-lg shadow-red-600/20 cursor-pointer active:scale-95 pointer-events-auto"
           >
             <LogOut className="w-5 h-5 md:w-6 md:h-6" />
           </button>
