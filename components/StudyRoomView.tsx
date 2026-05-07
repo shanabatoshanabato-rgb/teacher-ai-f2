@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Video, Mic, MicOff, VideoOff, ScreenShare, LogOut, 
+import {
+  Video, Mic, MicOff, VideoOff, ScreenShare, LogOut,
   Copy, Check, Users, Shield, Trash2, VolumeX, Loader2, Camera, Monitor, Settings
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
-import { 
-  getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, 
-  collection, addDoc, deleteDoc, query, getDocs, where 
+import {
+  getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot,
+  collection, addDoc, deleteDoc, query, getDocs, where
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -43,7 +43,7 @@ interface Participant {
 
 const StudyRoomView: React.FC = () => {
   const isAr = document.documentElement.lang === 'ar';
-  
+
   // State
   const [mode, setMode] = useState<'lobby' | 'room'>('lobby');
   const [userName, setUserName] = useState('');
@@ -68,14 +68,16 @@ const StudyRoomView: React.FC = () => {
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => leaveRoom();
+    return () => {
+      leaveRoom();
+    };
   }, []);
 
   const setupLocalMedia = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: true, 
-        audio: true 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: true
       });
       localStreamRef.current = stream;
       if (localVideoRef.current) {
@@ -96,10 +98,10 @@ const StudyRoomView: React.FC = () => {
   const createRoom = async () => {
     if (!userName) return alert(tx('يرجى إدخال اسمك', 'Please enter your name'));
     setIsLoading(true);
-    
+
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     const roomDoc = doc(db, 'rooms', code);
-    
+
     await setDoc(roomDoc, {
       hostId: userId,
       hostName: userName,
@@ -115,11 +117,11 @@ const StudyRoomView: React.FC = () => {
   const joinRoom = async () => {
     if (!userName || !roomCode) return alert(tx('يرجى إدخال الاسم ورمز الغرفة', 'Please enter name and room code'));
     setIsLoading(true);
-    
+
     const code = roomCode.toUpperCase();
     const roomDoc = doc(db, 'rooms', code);
     const snap = await getDoc(roomDoc);
-    
+
     if (!snap.exists() || snap.data().status === 'ended') {
       setIsLoading(false);
       return alert(tx('الغرفة غير موجودة أو انتهت', 'Room not found or ended'));
@@ -139,7 +141,7 @@ const StudyRoomView: React.FC = () => {
 
     const roomDoc = doc(db, 'rooms', code);
     roomRef.current = roomDoc;
-    
+
     // Add self to participants
     const selfDoc = doc(collection(roomDoc, 'participants'), userId);
     await setDoc(selfDoc, {
@@ -196,10 +198,7 @@ const StudyRoomView: React.FC = () => {
         if (change.type === 'added') {
           // Rule: If I joined AFTER them, I initiate the connection
           // We'll use joinedAt timestamp for consistency
-          const myData = (await getDoc(doc(participantsCol, userId))).data();
-          const otherData = change.doc.data();
-          
-          if (myData && myData.joinedAt > otherData.joinedAt) {
+          if (userId > otherUserId) {
             initiateCall(otherUserId);
           }
         }
@@ -215,7 +214,7 @@ const StudyRoomView: React.FC = () => {
         if (data.to !== userId) return;
 
         const from = data.from;
-        
+
         if (change.type === 'added' || change.type === 'modified') {
           if (data.offer && !pcsRef.current[from]) {
             handleOffer(from, data.offer);
@@ -322,7 +321,7 @@ const StudyRoomView: React.FC = () => {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const screenTrack = screenStream.getVideoTracks()[0];
-      
+
       // Replace video track on ALL peer connections
       Object.values(pcsRef.current).forEach(pc => {
         const sender = pc.getSenders().find(s => s.track?.kind === 'video');
@@ -357,18 +356,18 @@ const StudyRoomView: React.FC = () => {
     if (isHost && roomRef.current) {
       await updateDoc(roomRef.current, { status: 'ended' });
     }
-    
+
     if (roomRef.current && userId) {
       await deleteDoc(doc(roomRef.current, 'participants', userId));
     }
 
     // Stop tracks
     localStreamRef.current?.getTracks().forEach(track => track.stop());
-    
+
     // Close connections
     Object.values(pcsRef.current).forEach(pc => pc.close());
     pcsRef.current = {};
-    
+
     setMode('lobby');
     setParticipants([]);
     setRemoteStreams({});
@@ -416,8 +415,8 @@ const StudyRoomView: React.FC = () => {
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-2">{tx('اسم العرض', 'Display Name')}</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={userName}
                 onChange={e => setUserName(e.target.value)}
                 placeholder={tx('أدخل اسمك...', 'Enter your name...')}
@@ -426,7 +425,7 @@ const StudyRoomView: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <button 
+              <button
                 onClick={createRoom}
                 disabled={isLoading}
                 className="h-20 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-2xl flex flex-col items-center justify-center gap-1 transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-50 group"
@@ -438,10 +437,10 @@ const StudyRoomView: React.FC = () => {
                   </>
                 )}
               </button>
-              
+
               <div className="relative group">
                 <button 
-                  onClick={() => {/* Animation only */}}
+                  onClick={joinRoom}
                   className="w-full h-20 bg-white/5 border border-white/10 hover:border-white/20 text-white font-black rounded-2xl flex flex-col items-center justify-center gap-1 transition-all"
                 >
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -456,14 +455,14 @@ const StudyRoomView: React.FC = () => {
             </div>
 
             <div className="space-y-2">
-              <input 
-                type="text" 
+              <input
+                type="text"
                 value={roomCode}
                 onChange={e => setRoomCode(e.target.value.toUpperCase())}
                 placeholder={tx('أدخل رمز الغرفة...', 'Enter Room Code...')}
                 className="w-full h-16 bg-white/10 border border-white/10 rounded-2xl px-6 text-white font-black placeholder:text-slate-700 focus:outline-none focus:border-indigo-500/50 transition-all tracking-[0.3em] text-center text-xl uppercase"
               />
-              <button 
+              <button
                 onClick={joinRoom}
                 disabled={isLoading || !roomCode}
                 className="w-full h-16 bg-white text-black hover:bg-slate-200 font-black rounded-2xl transition-all uppercase tracking-widest text-xs disabled:opacity-30"
@@ -498,29 +497,28 @@ const StudyRoomView: React.FC = () => {
 
       {/* Grid of Video Tiles */}
       <div className="flex-1 p-6 pb-28">
-        <div className={`grid h-full gap-6 ${
-          participants.length <= 1 ? 'grid-cols-1' :
-          participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
-          participants.length <= 4 ? 'grid-cols-2' :
-          'grid-cols-2 lg:grid-cols-3'
-        }`}>
+        <div className={`grid h-full gap-6 ${participants.length <= 1 ? 'grid-cols-1' :
+            participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+              participants.length <= 4 ? 'grid-cols-2' :
+                'grid-cols-2 lg:grid-cols-3'
+          }`}>
           {/* Local Participant */}
           <div className={`relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group ${isSharing ? 'ring-4 ring-emerald-500 animate-pulse' : ''}`}>
-            <video 
-              ref={localVideoRef} 
-              autoPlay 
-              muted 
-              playsInline 
+            <video
+              ref={localVideoRef}
+              autoPlay
+              muted
+              playsInline
               className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`}
             />
             {isVideoOff && (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/20 to-black">
                 <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
-                   <VideoOff className="w-10 h-10 text-slate-500" />
+                  <VideoOff className="w-10 h-10 text-slate-500" />
                 </div>
               </div>
             )}
-            
+
             <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
               <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
                 <span className="text-[10px] font-black text-white uppercase tracking-widest">{userName} {tx('(أنت)', '(You)')}</span>
@@ -534,15 +532,15 @@ const StudyRoomView: React.FC = () => {
           {participants.filter(p => p.id !== userId).map(p => (
             <div key={p.id} className={`relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group ${p.isSharing ? 'ring-4 ring-emerald-500 animate-pulse' : ''}`}>
               <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} />
-              
+
               <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-10">
                 <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
                   <span className="text-[10px] font-black text-white uppercase tracking-widest">{p.name}</span>
                   {p.isMuted && <MicOff className="w-3 h-3 text-red-500" />}
                 </div>
-                
+
                 {isHost && (
-                  <button 
+                  <button
                     onClick={() => removeParticipant(p.id)}
                     className="p-3 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md"
                   >
@@ -558,21 +556,21 @@ const StudyRoomView: React.FC = () => {
       {/* Toolbar */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
         <div className="bg-[#0f0f12] backdrop-blur-2xl px-8 py-4 rounded-[2.5rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center gap-6">
-          <button 
+          <button
             onClick={toggleMic}
             className={`p-5 rounded-2xl transition-all ${isMuted ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </button>
-          
-          <button 
+
+          <button
             onClick={toggleCamera}
             className={`p-5 rounded-2xl transition-all ${isVideoOff ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Camera className="w-6 h-6" />}
           </button>
 
-          <button 
+          <button
             onClick={shareScreen}
             className={`p-5 rounded-2xl transition-all ${isSharing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
@@ -580,7 +578,7 @@ const StudyRoomView: React.FC = () => {
           </button>
 
           {isHost && (
-            <button 
+            <button
               onClick={muteAll}
               className="p-5 rounded-2xl bg-white/5 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all"
               title={tx('كتم صوت الجميع', 'Mute All')}
@@ -591,7 +589,7 @@ const StudyRoomView: React.FC = () => {
 
           <div className="w-px h-10 bg-white/10 mx-2" />
 
-          <button 
+          <button
             onClick={leaveRoom}
             className="p-5 bg-red-600 hover:bg-red-500 text-white rounded-2xl transition-all shadow-lg shadow-red-600/20"
           >
@@ -614,16 +612,16 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean }> = ({
 
   return (
     <>
-      <video 
-        ref={videoRef} 
-        autoPlay 
-        playsInline 
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
         className={`w-full h-full object-cover ${isVideoOff ? 'hidden' : ''}`}
       />
       {isVideoOff && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/10 to-black">
           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 opacity-50">
-             <VideoOff className="w-8 h-8 text-slate-600" />
+            <VideoOff className="w-8 h-8 text-slate-600" />
           </div>
         </div>
       )}
