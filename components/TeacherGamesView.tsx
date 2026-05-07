@@ -251,6 +251,7 @@ const TeacherGamesView: React.FC = () => {
   const [nickname, setNickname] = useState('');
   const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0].id);
   const [error, setError] = useState('');
+  const [hasJoined, setHasJoined] = useState(false);
 
   const playerId = useRef(crypto.randomUUID());
   const [scorePopup, setScorePopup] = useState<{ points: number; show: boolean }>({ points: 0, show: false });
@@ -296,19 +297,19 @@ const TeacherGamesView: React.FC = () => {
         setGameState(data);
         
         // Transition internal modes based on status
-        if (mode.startsWith('join_')) {
+        if (mode.startsWith('join_') && hasJoined) {
           if (data.status === 'lobby') setMode('join_lobby');
           else if (data.status === 'question') setMode('join_question');
           else if (data.status === 'ended') setMode('join_result');
         }
-      } else if (mode !== 'host_setup') {
-        setError(tx('لم يتم العثور على الغرفة أو تم إغلاقها.', 'Room not found or has been closed.'));
+      } else if (mode !== 'host_setup' && !isGenerating) {
+        // If data is gone and we're not in setup, reset
         resetToHome();
       }
     });
 
     return () => unsubscribe();
-  }, [gameId]);
+  }, [gameId, hasJoined, isGenerating]);
 
   const resetToHome = () => {
     setMode('home');
@@ -316,6 +317,7 @@ const TeacherGamesView: React.FC = () => {
     setGameState(null);
     setQuestions([]);
     setError('');
+    setHasJoined(false);
   };
 
   // --- Host Actions ---
@@ -459,9 +461,11 @@ Return only the JSON array.`;
       };
       await set(playerRef, playerData);
       onDisconnect(playerRef).remove();
+      setHasJoined(true);
       setMode('join_lobby');
-    } catch (err) {
-      setError(tx('فشل في الانضمام للغرفة.', 'Failed to join room.'));
+    } catch (err: any) {
+      console.error('Join error:', err);
+      setError(tx(`فشل في الانضمام: ${err.message}`, `Failed to join: ${err.message}`));
     }
   };
 
