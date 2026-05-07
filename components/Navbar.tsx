@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { 
-  MessageSquare, BookOpen, PenTool, Layout, FileText, Settings as SettingsIcon, Sparkles, Mic, Menu, X, Globe, Library, GraduationCap, Brain, ShieldCheck, Languages, FileCheck
+  MessageSquare, BookOpen, PenTool, Layout, FileText, Settings as SettingsIcon, Sparkles, Mic, Menu, X, Globe, Library, GraduationCap, Brain, ShieldCheck, Languages
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -18,7 +18,6 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'chat', label: isAr ? 'المحادثة' : 'Chat', icon: MessageSquare },
     { id: 'voice', label: isAr ? 'الوضع الصوتي' : 'Voice Mode', icon: Mic },
     { id: 'translator', label: isAr ? 'المترجم الحي' : 'Live Translator', icon: Languages },
-    { id: 'cv_booster', label: isAr ? 'محسّن السيرة' : 'CV Booster', icon: FileCheck },
     { id: 'teacher-uae', label: isAr ? 'منهاج الإمارات' : 'UAE Teacher', icon: ShieldCheck },
     { id: 'homework', label: isAr ? 'مساعد الواجبات' : 'Homework AI', icon: BookOpen },
     { id: 'islamic-hub', label: isAr ? 'المكتبة الإسلامية' : 'Islamic Hub', icon: Library },
