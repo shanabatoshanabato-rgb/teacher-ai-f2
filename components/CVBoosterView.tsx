@@ -126,10 +126,10 @@ Rewrite this CV to be fully ATS-optimized.`;
       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
       .replace(/^# (.+)$/gm, '<h1>$1</h1>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/^[*-] (.+)$/gm, '<li>$1</li>')
       .replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>')
       .replace(/\n\n/g, '</p><p>')
-      .replace(/^(?!<[h|u|l]).+$/gm, '<p>$&</p>')
+      .replace(/^(?!<(h|u|l|p)).+$/gm, '<p>$&</p>')
       .trim();
   };
 
@@ -149,18 +149,22 @@ Rewrite this CV to be fully ATS-optimized.`;
           }
           body { 
             font-family: ${cvLang === 'ar' ? "'Arial', 'Tahoma'" : "'Arial', sans-serif"};
-            max-width: 800px; margin: 40px auto; padding: 0 40px;
+            max-width: 800px; margin: 0 auto; padding: 40px;
             color: #1a1a1a; line-height: 1.6; font-size: 11pt;
             direction: ${cvLang === 'ar' ? 'rtl' : 'ltr'};
+            text-align: ${cvLang === 'ar' ? 'right' : 'left'};
           }
-          h1 { font-size: 20pt; border-bottom: 2px solid #059669; padding-bottom: 8px; }
-          h2 { font-size: 13pt; color: #059669; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; margin-top: 20px; }
-          ul { padding-inline-start: 20px; }
-          li { margin-bottom: 4px; }
-          strong { font-weight: 700; }
+          h1 { font-size: 20pt; border-bottom: 2px solid #059669; padding-bottom: 8px; margin-bottom: 20px; }
+          h2 { font-size: 13pt; color: #059669; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; margin-top: 24px; margin-bottom: 10px; text-transform: uppercase; }
+          ul { padding-inline-start: 25px; margin-bottom: 15px; }
+          li { margin-bottom: 6px; }
+          p { margin-bottom: 12px; }
+          strong { font-weight: 700; color: #000; }
           @media print {
-            body { margin: 0; }
+            body { margin: 0; padding: 0; }
             * { -webkit-print-color-adjust: exact; }
+            a[href]:after { content: none !important; }
+            .no-print { display: none; }
           }
         </style>
       </head>
