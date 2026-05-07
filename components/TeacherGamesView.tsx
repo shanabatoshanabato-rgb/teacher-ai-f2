@@ -325,14 +325,24 @@ const TeacherGamesView: React.FC = () => {
     setIsGenerating(true);
     setError('');
     try {
-      const systemPrompt = `You are a quiz generator. Return ONLY a valid JSON array with no markdown, no explanation, no backticks.
+      const systemPrompt = `You are a quiz generator. 
+CRITICAL: return ONLY a raw JSON array. No markdown, no backticks, no introduction, no explanation.
 Format: [{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A"}]
 Generate exactly 10 questions.`;
       const userPrompt = `Generate 10 multiple choice questions about: ${lessonName}
 Language: ${isAr ? 'Arabic' : 'English'}`;
 
       const res = await runPuterAgent(userPrompt, undefined, undefined, isAr ? 'ar' : 'en', false, systemPrompt);
-      const cleaned = res.text.replace(/```json/g, '').replace(/```/g, '').trim();
+      
+      // Resilient Parsing: Extract JSON array even if AI included chatter
+      let cleaned = res.text.trim();
+      const jsonMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
+      if (jsonMatch) {
+        cleaned = jsonMatch[0];
+      } else {
+        cleaned = cleaned.replace(/```json/g, '').replace(/```/g, '').trim();
+      }
+
       const parsed = JSON.parse(cleaned);
       setQuestions(parsed);
       setMode('host_lobby');
