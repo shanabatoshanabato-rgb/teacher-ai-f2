@@ -1,7 +1,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { 
-  FileCheck, Upload, Loader2, CheckCircle2, Download, Copy, RefreshCw, AlertCircle, Briefcase, ChevronRight
+  FileCheck, Upload, Loader2, CheckCircle2, Download, Copy, RefreshCw, AlertCircle, Briefcase, ChevronRight, FileText
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,13 +14,15 @@ const CVBoosterView: React.FC = () => {
   const [phase, setPhase] = useState<'upload' | 'processing' | 'result'>('upload');
   const [error, setError] = useState('');
   const [jobTitle, setJobTitle] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
   const [atsScore, setAtsScore] = useState<number | null>(null);
+  const [atsAnalysis, setAtsAnalysis] = useState('');
+  const [cvLang, setCvLang] = useState<'ar' | 'en'>('en');
   const [currentStep, setCurrentStep] = useState(0);
   const [isCopied, setIsCopied] = useState(false);
 
   const isAr = document.documentElement.lang === 'ar';
-  const detectedLang = useMemo(() => /[\u0600-\u06FF]/.test(extractedText || selectedFile?.name || '') ? 'ar' : 'en', [extractedText, selectedFile]);
-
+  
   const tx = (ar: string, en: string) => (isAr ? ar : en);
 
   const steps = [
@@ -57,39 +59,58 @@ const CVBoosterView: React.FC = () => {
       // Step 1: Extract Text
       const text = await extractPdfText(selectedFile);
       setExtractedText(text);
+
+      // Fix language detection
+      const lang = /[\u0600-\u06FF]/.test(text) ? 'ar' : 'en';
+      setCvLang(lang);
       setCurrentStep(1);
 
       // Step 2 & 3: Rewrite with AI
-      const systemPrompt = `You are an expert ATS (Applicant Tracking System) optimization specialist.
-Your job is to rewrite CVs to pass ATS systems for any industry and any job position.
+      const systemPrompt = `You are a professional ATS (Applicant Tracking System) optimization expert with deep knowledge of how ATS software parses and ranks CVs.
 
-LANGUAGE RULE: Detect the language of the CV and respond in the SAME language. If Arabic, write the entire rewritten CV in Arabic. If English, write in English.
+LANGUAGE RULE: Detect the language of the CV and respond entirely in that language. Arabic CV = Arabic output. English CV = English output.
 
-Rules:
-1. Never invent experience, qualifications, or skills — only rewrite what exists
-2. Inject industry-relevant ATS keywords naturally based on the target job title
-3. Rewrite the professional summary to be impactful and keyword-rich
-4. Restructure all experience bullet points using strong action verbs
-5. Add a "Core Competencies" or "Key Skills" section if not present
-6. Remove all graphics, tables, columns — output must be single-column plain structure
-7. Use clear markdown: ## for sections, **bold** for job titles, bullet points for experience
-8. At the very end, on its own line, write exactly: ATS_SCORE: [number 60-100]`;
+YOUR TASK: Rewrite the CV to maximize ATS score for the target position.
+
+REWRITING RULES:
+1. Never invent experience, skills, or qualifications — only rewrite and reframe what exists
+2. If a job description is provided, extract its exact keywords and inject them naturally throughout the CV
+3. If no job description is provided, use industry-standard keywords for the target job title
+4. Rewrite the professional summary: make it 3-4 sentences, keyword-rich, impactful, tailored to the role
+5. Restructure every bullet point using the CAR format: Context → Action → Result (add estimated results if none exist, e.g. "improved efficiency by approximately 20%")
+6. Add a "Core Competencies" section with 8-12 relevant keywords as a comma-separated list
+7. Ensure section headers use standard ATS-readable names: "Professional Summary", "Work Experience", "Education", "Skills", "Certifications"
+8. Remove: photos, graphics, tables, columns, special characters, emojis
+9. Output format: clean markdown, ## for sections, **bold** for company names and job titles, - for bullets
+
+KEYWORD ANALYSIS SECTION:
+After the rewritten CV, add a section titled "---ATS_ANALYSIS---" containing:
+- Keywords injected (list them)
+- Match score if job description was provided
+- 3 recommendations to further improve the CV
+
+At the very last line write: ATS_SCORE: [number 60-100]`;
 
       const userPrompt = `CV Content:
 ${text}
 
 Target Job Title: ${jobTitle}
 
-Rewrite this CV to be fully ATS-optimized for the target position.`;
+${jobDescription ? `Job Description / Posting:\n${jobDescription}\n\nMatch the CV keywords as closely as possible to this job description.` : ''}
 
-      const res = await runPuterAgent(userPrompt, undefined, undefined, detectedLang, false, systemPrompt);
+Rewrite this CV to be fully ATS-optimized.`;
+
+      const res = await runPuterAgent(userPrompt, undefined, undefined, lang, false, systemPrompt);
       
+      const analysisMatch = res.text.match(/---ATS_ANALYSIS---([\s\S]*?)(?=ATS_SCORE:|$)/);
+      const analysisText = analysisMatch ? analysisMatch[1].trim() : null;
       const scoreMatch = res.text.match(/ATS_SCORE:\s*(\d+)/);
       const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-      const cleanCV = res.text.replace(/ATS_SCORE:\s*\d+/g, '').trim();
+      const cleanCV = res.text.replace(/---ATS_ANALYSIS---[\s\S]*/, '').trim();
 
       setCurrentStep(3);
       setAtsScore(score);
+      setAtsAnalysis(analysisText || '');
       setBoostedCV(cleanCV);
       setTimeout(() => setPhase('result'), 500);
 
@@ -117,22 +138,30 @@ Rewrite this CV to be fully ATS-optimized for the target position.`;
     if (!printWindow) return;
     printWindow.document.write(`
       <!DOCTYPE html>
-      <html dir="${detectedLang === 'ar' ? 'rtl' : 'ltr'}">
+      <html dir="${cvLang === 'ar' ? 'rtl' : 'ltr'}">
       <head>
         <meta charset="UTF-8">
+        <title>CV</title>
         <style>
+          @page { 
+            margin: 1.5cm; 
+            size: A4;
+          }
           body { 
-            font-family: ${detectedLang === 'ar' ? "'Arial', 'Tahoma'" : "'Arial', sans-serif"};
+            font-family: ${cvLang === 'ar' ? "'Arial', 'Tahoma'" : "'Arial', sans-serif"};
             max-width: 800px; margin: 40px auto; padding: 0 40px;
             color: #1a1a1a; line-height: 1.6; font-size: 11pt;
-            direction: ${detectedLang === 'ar' ? 'rtl' : 'ltr'};
+            direction: ${cvLang === 'ar' ? 'rtl' : 'ltr'};
           }
           h1 { font-size: 20pt; border-bottom: 2px solid #059669; padding-bottom: 8px; }
           h2 { font-size: 13pt; color: #059669; border-bottom: 1px solid #d1d5db; padding-bottom: 4px; margin-top: 20px; }
           ul { padding-inline-start: 20px; }
           li { margin-bottom: 4px; }
           strong { font-weight: 700; }
-          @media print { body { margin: 20px; } }
+          @media print {
+            body { margin: 0; }
+            * { -webkit-print-color-adjust: exact; }
+          }
         </style>
       </head>
       <body>${convertMarkdownToHTML(boostedCV)}</body>
@@ -156,7 +185,10 @@ Rewrite this CV to be fully ATS-optimized for the target position.`;
     setPhase('upload');
     setError('');
     setJobTitle('');
+    setJobDescription('');
     setAtsScore(null);
+    setAtsAnalysis('');
+    setCvLang('en');
     setCurrentStep(0);
   };
 
@@ -181,19 +213,35 @@ Rewrite this CV to be fully ATS-optimized for the target position.`;
         
         {phase === 'upload' && (
           <div className="space-y-10">
-            {/* Job Title Input */}
-            <div className="space-y-4 text-center md:text-start">
-              <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start">
-                <Briefcase className="w-3 h-3" />
-                {tx('ما هي الوظيفة المستهدفة؟', 'TARGET JOB TITLE')}
-              </label>
-              <input 
-                type="text"
-                value={jobTitle}
-                onChange={(e) => setJobTitle(e.target.value)}
-                placeholder={tx('مثال: مهندس برمجيات، محاسب', 'e.g. Software Engineer, Accountant')}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-medium"
-              />
+            {/* Job Title & Description Input */}
+            <div className="space-y-8">
+              <div className="space-y-4 text-center md:text-start">
+                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start">
+                  <Briefcase className="w-3 h-3" />
+                  {tx('ما هي الوظيفة المستهدفة؟', 'TARGET JOB TITLE')}
+                </label>
+                <input 
+                  type="text"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder={tx('مثال: مهندس برمجيات، محاسب', 'e.g. Software Engineer, Accountant')}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-medium"
+                />
+              </div>
+
+              <div className="space-y-4 text-center md:text-start">
+                <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-2 justify-center md:justify-start">
+                  <FileText className="w-3 h-3" />
+                  {tx('وصف الوظيفة (اختياري ولكن ينصح به)', 'JOB DESCRIPTION (OPTIONAL BUT RECOMMENDED)')}
+                </label>
+                <textarea
+                  value={jobDescription}
+                  onChange={e => setJobDescription(e.target.value)}
+                  placeholder={tx('انسخ إعلان الوظيفة هنا لمطابقة ATS أكثر دقة...', 'Paste the job posting here for more accurate ATS matching...')}
+                  rows={5}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-medium resize-none"
+                />
+              </div>
             </div>
 
             {/* Upload Area */}
@@ -318,11 +366,22 @@ Rewrite this CV to be fully ATS-optimized for the target position.`;
               </div>
             </div>
 
-            <div className={`bg-[#0a0a0c] p-8 md:p-12 rounded-[2rem] border border-white/5 shadow-inner overflow-hidden max-h-[600px] overflow-y-auto ${detectedLang === 'ar' ? 'text-right font-arabic' : 'text-left'}`} dir={detectedLang === 'ar' ? 'rtl' : 'ltr'}>
+            <div className={`bg-[#0a0a0c] p-8 md:p-12 rounded-[2rem] border border-white/5 shadow-inner overflow-hidden max-h-[600px] overflow-y-auto ${cvLang === 'ar' ? 'text-right font-arabic' : 'text-left'}`} dir={cvLang === 'ar' ? 'rtl' : 'ltr'}>
               <div className="prose prose-invert prose-emerald max-w-none">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{boostedCV}</ReactMarkdown>
               </div>
             </div>
+
+            {atsAnalysis && (
+              <div className="bg-emerald-600/5 border border-emerald-500/20 rounded-[2rem] p-8 space-y-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                  {cvLang === 'ar' ? 'تقرير ATS التفصيلي' : 'ATS DETAILED REPORT'}
+                </h4>
+                <div className="prose prose-invert prose-emerald max-w-none text-sm">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{atsAnalysis}</ReactMarkdown>
+                </div>
+              </div>
+            )}
 
             <button 
               onClick={reset}
