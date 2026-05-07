@@ -302,14 +302,18 @@ const TeacherGamesView: React.FC = () => {
           else if (data.status === 'question') setMode('join_question');
           else if (data.status === 'ended') setMode('join_result');
         }
-      } else if (mode !== 'host_setup' && !isGenerating) {
-        // If data is gone and we're not in setup, reset
+      } else if (mode === 'host_lobby' || mode === 'host_question' || mode === 'host_results') {
+        // Host was in a game and it was deleted
+        resetToHome();
+      } else if (mode.startsWith('join_') && hasJoined) {
+        // Student was in a game and it was deleted
+        setError(tx('تم إغلاق الغرفة.', 'Room has been closed.'));
         resetToHome();
       }
     });
 
     return () => unsubscribe();
-  }, [gameId, hasJoined, isGenerating]);
+  }, [gameId, hasJoined, mode]);
 
   const resetToHome = () => {
     setMode('home');
