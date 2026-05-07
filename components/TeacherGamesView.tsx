@@ -517,7 +517,7 @@ Return only the JSON array.`;
   // --- Render Helpers ---
 
   const currentQuestionsCount = gameState?.questions.length || 0;
-  const currentQ = gameState?.questions[gameState.currentQuestion];
+  const currentQ = gameState?.questions?.[gameState.currentQuestion];
   const sortedPlayers = useMemo(() => {
     if (!gameState?.players) return [];
     return Object.values(gameState.players).sort((a, b) => b.score - a.score);
@@ -533,7 +533,7 @@ Return only the JSON array.`;
   }, [gameState?.players, gameState?.currentQuestion]);
 
   return (
-    <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col items-center justify-center py-10 px-4">
+    <div className="flex-1 w-full max-w-5xl mx-auto flex flex-col items-center justify-center py-10 px-4 min-h-[60dvh]">
       <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
@@ -562,473 +562,476 @@ Return only the JSON array.`;
       {error && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[100] bg-red-500 text-white px-6 py-3 rounded-2xl font-bold shadow-2xl flex items-center gap-3 animate-in slide-in-from-top-4">
           <XCircle className="w-5 h-5" />
-          {error}
+          <div className="text-xs break-all max-w-md">{error}</div>
           <button onClick={() => setError('')} className="ml-4 opacity-50 hover:opacity-100">×</button>
         </div>
       )}
 
-      {/* --- Home View --- */}
-      {mode === 'home' && (
-        <div className="w-full text-center space-y-12 animate-in fade-in duration-600">
-          <div className="space-y-4">
-            <div className="inline-flex p-4 bg-indigo-600/10 rounded-3xl border border-indigo-500/20 mb-4">
-              <Gamepad2 className="w-12 h-12 text-indigo-400" />
-            </div>
-            <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase leading-tight">
-              {tx('العاب المعلم', 'Teacher Games')}
-            </h1>
-            <p className="text-slate-400 text-sm md:text-lg max-w-xl mx-auto font-bold uppercase tracking-widest leading-relaxed">
-              {tx('العاب تعليمية تنافسية مع طلابك في الوقت الفعلي', 'Competitive educational games with your students in real time')}
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mx-auto drop-shadow-2xl h-64 md:h-80 perspective-1000">
-            <button 
-              onClick={() => setMode('host_setup')}
-              className="group preserve-3d relative bg-white/5 border border-white/10 hover:border-emerald-500/50 rounded-[2.5rem] p-10 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 active:scale-95"
-            >
-              <div className="p-5 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:scale-110 transition-transform">
-                <Crown className="w-10 h-10" />
-              </div>
-              <span className="text-xl font-black text-white uppercase tracking-widest">{tx('أنا المعلم (مستضيف)', 'I am the Teacher (Host)')}</span>
-            </button>
-            <button 
-              onClick={() => setMode('join_enter')}
-              className="group preserve-3d relative bg-white/5 border border-white/10 hover:border-indigo-500/50 rounded-[2.5rem] p-10 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 active:scale-95"
-            >
-              <div className="p-5 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform">
-                <Users className="w-10 h-10" />
-              </div>
-              <span className="text-xl font-black text-white uppercase tracking-widest">{tx('أنا طالب (لاعب)', 'I am a Student (Player)')}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- Host Setup --- */}
-      {mode === 'host_setup' && (
-        <div className="w-full max-w-2xl bg-white/5 border border-white/10 p-10 md:p-14 rounded-[3rem] backdrop-blur-xl animate-in slide-in-from-bottom-6 duration-600">
-          <div className="flex items-center gap-4 mb-10">
-            <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <h2 className="text-2xl font-black text-white uppercase">{tx('تجهيز اللعبة الممتعة', 'Setup Fun Game')}</h2>
-          </div>
-
-          <div className="space-y-10">
-            <div className="space-y-4">
-              <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{tx('اسم الدرس / الموضوع', 'LESSON NAME / TOPIC')}</label>
-              <input 
-                type="text" 
-                value={lessonName}
-                onChange={(e) => setLessonName(e.target.value)}
-                placeholder={tx('مثال: الكواكب، الحرب العالمية الثانية...', 'e.g. Planets, WW2...')}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-bold"
-              />
-            </div>
-
-            <div className="flex gap-4">
-               <button 
-                 onClick={generateAIQuiz}
-                 disabled={isGenerating || !lessonName}
-                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20"
-               >
-                 {isGenerating ? <RefreshCw className="animate-spin" /> : <Sparkles />}
-                 {isGenerating ? tx('جاري التوليد...', 'Generating...') : tx('توليد بالذكاء الاصطناعي', 'AI Generate')}
-               </button>
-            </div>
-            
-            <button onClick={resetToHome} className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest py-2 transition-colors">{tx('العودة', 'Back')}</button>
-          </div>
-        </div>
-      )}
-
-      {/* --- Host Lobby --- */}
-      {mode === 'host_lobby' && (
-        <div className="w-full h-full flex flex-col items-center gap-10 animate-in fade-in duration-600">
-          <div className="text-center space-y-6">
-            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">{tx('انضم الآن باستخدام الرمز', 'Join now using the code')}</span>
-            <div className="text-8xl md:text-9xl font-black text-white text-shadow-glow animate-pulse tracking-tighter">
-              {gameId}
-            </div>
-            <div className="flex justify-center gap-4">
-              <button 
-                 className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-slate-300 hover:text-white transition-all text-xs font-bold font-black"
-                 onClick={() => {
-                   const url = `${window.location.origin}${window.location.pathname}?join=${gameId}`;
-                   navigator.clipboard.writeText(url);
-                 }}
-              >
-                <Share2 className="w-4 h-4" />
-                {tx('نسخ رابط الانضمام', 'Copy Invite Link')}
-              </button>
-            </div>
-          </div>
-
-          <div className="w-full max-w-4xl bg-white/5 border border-white/10 rounded-[3rem] p-10 flex flex-col gap-6 flex-1 min-h-[400px]">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                   <Users className="text-indigo-400" />
-                   <h3 className="text-xl font-black text-white uppercase tracking-widest">{tx('اللاعبون في الانتظار', 'Players in Lobby')}</h3>
-                </div>
-                <div className="px-4 py-2 bg-indigo-600/20 text-indigo-400 rounded-full font-black text-sm">
-                   {sortedPlayers.length} {tx('لاعبين', 'Players')}
-                </div>
-             </div>
-
-             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
-                {sortedPlayers.map((player, idx) => (
-                  <div 
-                    key={player.id} 
-                    className="flex flex-col items-center gap-3 animate-in slide-in-from-bottom-4"
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    <div className="p-2 bg-white/5 rounded-3xl border border-white/10 shadow-lg">
-                       <AnimalAvatarSVG id={player.avatar} color={AVATARS.find(a => a.id === player.avatar)?.color || '#333'} size={60} />
-                    </div>
-                    <span className="text-xs font-black text-white uppercase tracking-widest text-center truncate w-full px-2">{player.name}</span>
-                  </div>
-                ))}
-             </div>
-
-             {sortedPlayers.length === 0 && (
-                <div className="flex-1 flex flex-col items-center justify-center opacity-20">
-                   <Users className="w-20 h-20 mb-4" />
-                   <p className="font-bold uppercase tracking-widest">{tx('بانتظار دخول الطلاب...', 'Waiting for students...')}</p>
-                </div>
-             )}
-          </div>
-
-          <button 
-            disabled={sortedPlayers.length === 0}
-            onClick={hostStartGameTrigger}
-            className="w-full max-w-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4"
-          >
-            <Play fill="currentColor" />
-            {tx('ابدأ اللعبة الآن', 'Start Game')}
-          </button>
-        </div>
-      )}
-
-      {/* --- Join Step: Enter ID --- */}
-      {mode === 'join_enter' && (
-        <div className="w-full max-w-sm space-y-12 animate-in fade-in duration-600">
-           <div className="text-center space-y-4">
-              <h2 className="text-4xl font-black text-white uppercase tracking-tighter">{tx('انضم للتحدي', 'Join Challenge')}</h2>
-              <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">{tx('أدخل كود اللعبة المكون من 6 أرقام', 'Enter the 6-digit game code')}</p>
-           </div>
-           
-           <div className="space-y-6">
-              <input 
-                type="text" 
-                maxLength={6}
-                value={gameId}
-                onChange={(e) => setGameId(e.target.value)}
-                placeholder="000000"
-                className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] py-8 text-center text-5xl font-black tracking-[0.2em] text-white focus:outline-none focus:border-indigo-500 transition-all placeholder:opacity-20"
-              />
-
+      {/* --- State-Driven Layout --- */}
+      {!gameId ? (
+        <>
+          {mode === 'home' && (
+            <div className="w-full text-center space-y-12 animate-in fade-in duration-600">
               <div className="space-y-4">
-                <input 
-                  type="text" 
-                  value={nickname}
-                  onChange={(e) => setNickname(e.target.value)}
-                  placeholder={tx('لقبك في اللعبة', 'Your game nickname')}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-indigo-500 transition-all font-bold text-center"
-                />
-              </div>
-
-              <div className="grid grid-cols-4 gap-3 bg-white/5 p-4 rounded-[2rem] border border-white/10">
-                 {AVATARS.map((avatar) => (
-                    <button 
-                      key={avatar.id}
-                      onClick={() => setSelectedAvatar(avatar.id)}
-                      className={`p-2 rounded-2xl transition-all hover:scale-110 active:scale-90 ${selectedAvatar === avatar.id ? 'bg-indigo-600 ring-2 ring-indigo-400' : 'bg-white/5'}`}
-                    >
-                      <AnimalAvatarSVG id={avatar.id} color={avatar.color} size={40} />
-                    </button>
-                 ))}
-              </div>
-
-              <button 
-                onClick={joinGame}
-                disabled={!gameId || !nickname}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-900/40 flex items-center justify-center gap-3"
-              >
-                 <ArrowRight />
-                 {tx('دخول الغرفة', 'Join Room')}
-              </button>
-           </div>
-           
-           <button onClick={resetToHome} className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest py-2 transition-colors">{tx('العودة والرئيسية', 'Back Home')}</button>
-        </div>
-      )}
-
-      {/* --- Join Lobby --- */}
-      {mode === 'join_lobby' && (
-        <div className="w-full text-center space-y-12 animate-in fade-in duration-600">
-           <div className="space-y-6">
-              <div className="relative inline-block">
-                 <div className="p-10 bg-indigo-600/10 rounded-full border border-indigo-500/20 animate-pulse">
-                    <AnimalAvatarSVG id={selectedAvatar} color={AVATARS.find(a => a.id === selectedAvatar)?.color || '#333'} size={120} />
-                 </div>
-                 <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-3 rounded-2xl shadow-xl shadow-emerald-500/20">
-                    <CheckCircle2 className="w-6 h-6" />
-                 </div>
-              </div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-widest">{nickname}</h2>
-              <div className="px-6 py-3 bg-white/5 border border-white/5 rounded-full inline-block">
-                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">{tx('تم الانضمام للغرفة', 'Joined Room')} {gameId}</span>
-              </div>
-           </div>
-
-           <div className="space-y-4 animate-bounce">
-              <Loader2 className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
-              <p className="text-xl font-black text-white uppercase tracking-widest">{tx('بانتظار المعلم لبدء اللعبة...', 'Waiting for host to start...')}</p>
-           </div>
-        </div>
-      )}
-
-      {/* --- Question View --- */}
-      {(mode === 'host_question' || mode === 'join_question') && gameState?.status === 'question' && (
-        <div className="w-full max-w-4xl space-y-10 animate-in slide-in-from-bottom-10 duration-600">
-           {/* Header Stats */}
-           <div className="flex justify-between items-end px-4">
-              <div className="space-y-1">
-                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{tx('التقدم', 'PROGRESS')}</span>
-                 <p className="text-lg font-black text-white uppercase">{tx('السؤال', 'Question')} {gameState.currentQuestion + 1} / {gameState.questions.length}</p>
-              </div>
-              {mode.startsWith('join_') && (
-                <div className="text-right space-y-1">
-                   <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{tx('نقاطك', 'YOUR SCORE')}</span>
-                   <p className="text-lg font-black text-white">{gameState.players?.[playerId.current]?.score || 0}</p>
+                <div className="inline-flex p-4 bg-indigo-600/10 rounded-3xl border border-indigo-500/20 mb-4">
+                  <Gamepad2 className="w-12 h-12 text-indigo-400" />
                 </div>
-              )}
-              {mode.startsWith('host_') && (
-                 <div className="text-right space-y-1">
-                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{tx('الإجابات', 'RESPONSES')}</span>
-                    <p className="text-lg font-black text-white">{playerAnsweredCount} / {sortedPlayers.length}</p>
-                 </div>
-              )}
-           </div>
-
-           <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300" 
-                style={{ width: `${((gameState.currentQuestion + (mode.startsWith('join_') && gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion] ? 1 : 0)) / gameState.questions.length) * 100}%` }}
-              />
-           </div>
-
-           {/* Question Card */}
-           <div className="bg-white/5 border border-white/10 p-10 md:p-14 rounded-[3rem] text-center space-y-10 shadow-2xl backdrop-blur-xl group perspective-1000">
-              <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-6 py-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/30">
-                 <Clock className="w-4 h-4 text-white" />
-                 <span className="text-lg font-black text-white">{Math.ceil(timeLeft)}s</span>
+                <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter uppercase leading-tight">
+                  {tx('العاب المعلم', 'Teacher Games')}
+                </h1>
+                <p className="text-slate-400 text-sm md:text-lg max-w-xl mx-auto font-bold uppercase tracking-widest leading-relaxed">
+                  {tx('العاب تعليمية تنافسية مع طلابك في الوقت الفعلي', 'Competitive educational games with your students in real time')}
+                </p>
               </div>
 
-              <h3 className="text-2xl md:text-4xl font-black text-white leading-tight uppercase">
-                {currentQ?.question}
-              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mx-auto drop-shadow-2xl h-64 md:h-80 perspective-1000">
+                <button 
+                  onClick={() => setMode('host_setup')}
+                  className="group preserve-3d relative bg-white/5 border border-white/10 hover:border-emerald-500/50 rounded-[2.5rem] p-10 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 active:scale-95"
+                >
+                  <div className="p-5 bg-emerald-500/10 rounded-2xl text-emerald-400 group-hover:scale-110 transition-transform">
+                    <Crown className="w-10 h-10" />
+                  </div>
+                  <span className="text-xl font-black text-white uppercase tracking-widest">{tx('أنا المعلم (مستضيف)', 'I am the Teacher (Host)')}</span>
+                </button>
+                <button 
+                  onClick={() => setMode('join_enter')}
+                  className="group preserve-3d relative bg-white/5 border border-white/10 hover:border-indigo-500/50 rounded-[2.5rem] p-10 flex flex-col items-center justify-center gap-6 transition-all hover:scale-105 active:scale-95"
+                >
+                  <div className="p-5 bg-indigo-500/10 rounded-2xl text-indigo-400 group-hover:scale-110 transition-transform">
+                    <Users className="w-10 h-10" />
+                  </div>
+                  <span className="text-xl font-black text-white uppercase tracking-widest">{tx('أنا طالب (لاعب)', 'I am a Student (Player)')}</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-              {/* Progress Bar/Timer Detail */}
-              <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden">
-                 <div 
-                   className={`h-full transition-all duration-150 ${timeLeft > 10 ? 'bg-emerald-500' : timeLeft > 5 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                   style={{ width: `${(timeLeft / 20) * 100}%` }}
-                 />
+          {mode === 'host_setup' && (
+            <div className="w-full max-w-2xl bg-white/5 border border-white/10 p-10 md:p-14 rounded-[3rem] backdrop-blur-xl animate-in slide-in-from-bottom-6 duration-600">
+              <div className="flex items-center gap-4 mb-10">
+                <div className="p-3 bg-emerald-500/20 text-emerald-400 rounded-2xl">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <h2 className="text-2xl font-black text-white uppercase">{tx('تجهيز اللعبة الممتعة', 'Setup Fun Game')}</h2>
               </div>
 
-              {/* Answers - Student Mode */}
-              {mode === 'join_question' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   {currentQ?.options.map((opt, i) => {
-                      const ans = gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion];
-                      const isSelected = ans?.selectedOption === opt;
-                      const hasAnswered = !!ans;
-                      return (
-                        <button
-                          key={i}
-                          disabled={hasAnswered || timeLeft <= 0}
-                          onClick={() => submitAnswer(opt)}
-                          className={`
-                            relative h-20 md:h-24 px-8 rounded-2xl font-black uppercase tracking-widest text-sm transition-all flex items-center justify-between group overflow-hidden
-                            ${isSelected ? 'bg-indigo-600 text-white shadow-[0_0_30px_rgba(99,102,241,0.5)]' : hasAnswered ? 'bg-white/5 text-slate-500 scale-95 opacity-50' : 'bg-white/5 hover:bg-white/10 text-white border border-white/5 hover:border-indigo-400/30 hover:-translate-y-1'}
-                          `}
+              <div className="space-y-10">
+                <div className="space-y-4">
+                  <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{tx('اسم الدرس / الموضوع', 'LESSON NAME / TOPIC')}</label>
+                  <input 
+                    type="text" 
+                    value={lessonName}
+                    onChange={(e) => setLessonName(e.target.value)}
+                    placeholder={tx('مثال: الكواكب، الحرب العالمية الثانية...', 'e.g. Planets, WW2...')}
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-bold"
+                  />
+                </div>
+
+                <div className="flex gap-4">
+                   <button 
+                     onClick={generateAIQuiz}
+                     disabled={isGenerating || !lessonName}
+                     className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20"
+                   >
+                     {isGenerating ? <RefreshCw className="animate-spin" /> : <Sparkles />}
+                     {isGenerating ? tx('جاري التوليد...', 'Generating...') : tx('توليد بالذكاء الاصطناعي', 'AI Generate')}
+                   </button>
+                </div>
+                
+                <button onClick={resetToHome} className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest py-2 transition-colors">{tx('العودة', 'Back')}</button>
+              </div>
+            </div>
+          )}
+
+          {mode === 'join_enter' && (
+            <div className="w-full max-w-sm space-y-12 animate-in fade-in duration-600">
+               <div className="text-center space-y-4">
+                  <h2 className="text-4xl font-black text-white uppercase tracking-tighter">{tx('انضم للتحدي', 'Join Challenge')}</h2>
+                  <p className="text-slate-500 font-bold uppercase tracking-widest text-[10px]">{tx('أدخل كود اللعبة المكون من 6 أرقام', 'Enter the 6-digit game code')}</p>
+               </div>
+               
+               <div className="space-y-6">
+                  <input 
+                    type="text" 
+                    maxLength={6}
+                    value={gameId}
+                    onChange={(e) => setGameId(e.target.value)}
+                    placeholder="000000"
+                    className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] py-8 text-center text-5xl font-black tracking-[0.2em] text-white focus:outline-none focus:border-indigo-500 transition-all placeholder:opacity-20"
+                  />
+
+                  <div className="space-y-4">
+                    <input 
+                      type="text" 
+                      value={nickname}
+                      onChange={(e) => setNickname(e.target.value)}
+                      placeholder={tx('لقبك في اللعبة', 'Your game nickname')}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-indigo-500 transition-all font-bold text-center"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-3 bg-white/5 p-4 rounded-[2rem] border border-white/10">
+                     {AVATARS.map((avatar) => (
+                        <button 
+                          key={avatar.id}
+                          onClick={() => setSelectedAvatar(avatar.id)}
+                          className={`p-2 rounded-2xl transition-all hover:scale-110 active:scale-90 ${selectedAvatar === avatar.id ? 'bg-indigo-600 ring-2 ring-indigo-400' : 'bg-white/5'}`}
                         >
-                           <span className="relative z-10">{opt}</span>
-                           <div className="relative z-10 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-black">
-                              {['A','B','C','D'][i]}
-                           </div>
-                           {/* Click Ripple Background */}
+                          <AnimalAvatarSVG id={avatar.id} color={avatar.color} size={40} />
                         </button>
-                      );
-                   })}
-                </div>
-              )}
+                     ))}
+                  </div>
 
-              {/* Status - Join Screen After Answer */}
-              {mode === 'join_question' && gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion] && (
-                 <div className="p-6 rounded-3xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 animate-pulse font-black uppercase text-xl">
-                   {tx('بانتظار إجابة باقي اللاعبين...', 'Waiting for others to answer...')}
-                 </div>
-              )}
-
-              {/* Host Control Side */}
-              {mode === 'host_question' && (
-                 <div className="flex flex-col gap-6">
-                    <div className="grid grid-cols-2 gap-4 opacity-50">
-                       {currentQ?.options.map((opt, i) => (
-                          <div key={i} className="p-6 bg-white/5 rounded-2xl border border-white/5 text-slate-400 text-xs font-black uppercase">{opt}</div>
-                       ))}
-                    </div>
-                    
-                    <button 
-                      onClick={nextQuestion}
-                      className="group bg-indigo-600 hover:bg-indigo-500 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl transition-all overflow-hidden flex items-center justify-center gap-4 mt-4"
-                    >
-                       {tx('السؤال التالي', 'Next Question')}
-                       <ArrowRight className="group-hover:translate-x-2 transition-transform" />
-                    </button>
-                 </div>
-              )}
-           </div>
-
-           {/* Score Popup for students */}
-           {scorePopup.show && (
-              <div className="fixed top-1/2 left-1/2 -translate-x-1/2 z-[200] pointer-events-none text-emerald-400 text-8xl font-black animate-float-up text-shadow-glow">
-                 +{scorePopup.points}
-              </div>
-           )}
+                  <button 
+                    onClick={joinGame}
+                    disabled={!gameId || !nickname}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest transition-all shadow-xl shadow-indigo-900/40 flex items-center justify-center gap-3"
+                  >
+                     <ArrowRight />
+                     {tx('دخول الغرفة', 'Join Room')}
+                  </button>
+               </div>
+               
+               <button onClick={resetToHome} className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest py-2 transition-colors">{tx('العودة والرئيسية', 'Back Home')}</button>
+            </div>
+          )}
+        </>
+      ) : !gameState ? (
+        <div className="flex flex-col items-center gap-6 animate-pulse">
+           <Loader2 className="w-12 h-12 text-indigo-400 animate-spin" />
+           <p className="font-black text-slate-400 uppercase tracking-widest">{tx('يتم الآن مزامنة بيانات الغرفة...', 'Syncing room data...')}</p>
         </div>
-      )}
-
-      {/* --- Results View (End Game) --- */}
-      {(mode === 'host_results' || mode === 'join_result' || (gameState?.status === 'ended')) && (
-        <div className="w-full max-w-4xl space-y-12 animate-in zoom-in duration-600">
-           <div className="text-center space-y-4 mb-20 relative">
-              <div className="inline-flex p-5 bg-yellow-500/10 rounded-full border border-yellow-400/20 mb-4">
-                 <Trophy className="w-12 h-12 text-yellow-400 animate-bounce" />
-              </div>
-              <h2 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter">{tx('المنصة النهائية', 'The Podium')}</h2>
-           </div>
-
-           {/* Top 3 Podium */}
-           <div className="flex items-end justify-center gap-4 sm:gap-10 mb-20 h-64 md:h-80">
-              {/* 2nd Place */}
-              {sortedPlayers[1] && (
-                <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-20 delay-200">
-                   <div className="relative">
-                      <div className="p-1 bg-slate-400 rounded-full">
-                         <div className="bg-slate-800 p-2 rounded-full border-4 border-slate-400">
-                            <AnimalAvatarSVG id={sortedPlayers[1].avatar} color={AVATARS.find(a => a.id === sortedPlayers[1].avatar)?.color || '#333'} size={60} />
-                         </div>
-                      </div>
-                      <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-400 text-slate-900 font-bold flex items-center justify-center border-2 border-white/10 shadow-lg">2</div>
-                   </div>
-                   <div className="w-24 md:w-32 bg-gradient-to-b from-slate-400/40 to-transparent h-40 rounded-t-3xl border-x border-t border-slate-400/20 p-4 text-center">
-                      <span className="text-xs font-black text-white uppercase truncate block w-full">{sortedPlayers[1].name}</span>
-                      <span className="text-sm font-black text-slate-400">{sortedPlayers[1].score}</span>
-                   </div>
-                </div>
-              )}
-
-              {/* 1st Place */}
-              {sortedPlayers[0] && (
-                <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-28">
-                   <div className="relative">
-                      <div className="p-1.5 bg-yellow-400 rounded-full shadow-[0_0_30px_rgba(251,191,36,0.6)]">
-                         <div className="bg-slate-900 p-3 rounded-full border-4 border-yellow-400">
-                            <AnimalAvatarSVG id={sortedPlayers[0].avatar} color={AVATARS.find(a => a.id === sortedPlayers[0].avatar)?.color || '#333'} size={80} />
-                         </div>
-                      </div>
-                      <div className="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-yellow-400 text-slate-900 font-bold text-xl flex items-center justify-center border-2 border-white shadow-xl">1</div>
-                   </div>
-                   <div className="w-32 md:w-44 bg-gradient-to-b from-yellow-400/40 to-transparent h-56 rounded-t-[3rem] border-x border-t border-yellow-400/20 p-6 text-center">
-                      <span className="text-base font-black text-white uppercase truncate block w-full mb-1">{sortedPlayers[0].name}</span>
-                      <span className="text-xl font-black text-yellow-400">{sortedPlayers[0].score}</span>
-                   </div>
-                </div>
-              )}
-
-              {/* 3rd Place */}
-              {sortedPlayers[2] && (
-                <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-16 delay-400">
-                   <div className="relative">
-                      <div className="p-1 bg-amber-700 rounded-full">
-                         <div className="bg-slate-900 p-2 rounded-full border-4 border-amber-700">
-                            <AnimalAvatarSVG id={sortedPlayers[2].avatar} color={AVATARS.find(a => a.id === sortedPlayers[2].avatar)?.color || '#333'} size={50} />
-                         </div>
-                      </div>
-                      <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-amber-700 text-white font-bold flex items-center justify-center border-2 border-white/10 shadow-lg">3</div>
-                   </div>
-                   <div className="w-20 md:w-28 bg-gradient-to-b from-amber-700/40 to-transparent h-32 rounded-t-3xl border-x border-t border-amber-700/20 p-4 text-center">
-                      <span className="text-[10px] font-black text-white uppercase truncate block w-full">{sortedPlayers[2].name}</span>
-                      <span className="text-xs font-black text-amber-700">{sortedPlayers[2].score}</span>
-                   </div>
-                </div>
-              )}
-           </div>
-
-           {/* Detailed Table */}
-           <div className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden drop-shadow-2xl">
-              <table className="w-full text-left font-bold uppercase text-[10px] tracking-widest">
-                 <thead className="bg-white/5 border-b border-white/5">
-                    <tr>
-                       <th className="px-8 py-5 text-slate-500 font-black">{tx('الرتبة', 'RANK')}</th>
-                       <th className="px-8 py-5 text-slate-500 font-black">{tx('اللاعب', 'PLAYER')}</th>
-                       <th className="px-8 py-5 text-slate-500 font-black hidden md:table-cell">{tx('الإجابات', 'ACCURACY')}</th>
-                       <th className="px-8 py-5 text-right text-emerald-400 font-black">{tx('النتيجة', 'SCORE')}</th>
-                    </tr>
-                 </thead>
-                 <tbody className="divide-y divide-white/5">
-                    {sortedPlayers.map((p, i) => {
-                      const totalCorrect = p.answers ? Object.values(p.answers).filter(a => a.correct).length : 0;
-                      return (
-                        <tr key={p.id} className={`group hover:bg-white/5 transition-colors ${p.id === playerId.current ? 'bg-indigo-600/10' : ''}`}>
-                           <td className="px-8 py-6 font-black text-white text-lg">#{i + 1}</td>
-                           <td className="px-8 py-6">
-                              <div className="flex items-center gap-4">
-                                 <AnimalAvatarSVG id={p.avatar} color={AVATARS.find(a => a.id === p.avatar)?.color || '#333'} size={40} />
-                                 <span className="text-sm text-white">{p.name} {p.id === playerId.current && <span className="text-indigo-400 ml-2">({tx('أنت', 'You')})</span>}</span>
-                              </div>
-                           </td>
-                           <td className="px-8 py-6 hidden md:table-cell">
-                              <div className="flex items-center gap-2">
-                                 <div className="flex-1 max-w-[100px] h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500" style={{ width: `${(totalCorrect / currentQuestionsCount) * 100}%` }} />
-                                 </div>
-                                 <span className="text-emerald-500">{totalCorrect}/{currentQuestionsCount}</span>
-                              </div>
-                           </td>
-                           <td className="px-8 py-6 text-right font-black text-lg text-white">{p.score}</td>
-                        </tr>
-                      );
-                    })}
-                 </tbody>
-              </table>
-           </div>
-
-           {/* Final Buttons */}
-           <div className="flex flex-col sm:flex-row gap-4 pt-10">
+      ) : (
+        <>
+          {/* LOBBY PHASE */}
+          {gameState.status === 'lobby' && (
+            <div className="w-full h-full flex flex-col items-center gap-10 animate-in fade-in duration-600">
               {mode.startsWith('host_') ? (
-                <button 
-                  onClick={endGame}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-red-900/20"
-                >
-                  <LogOut />
-                  {tx('إنهاء اللعبة للجميع', 'End Game for All')}
-                </button>
+                // Host Lobby UI
+                <>
+                  <div className="text-center space-y-6">
+                    <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em]">{tx('انضم الآن باستخدام الرمز', 'Join now using the code')}</span>
+                    <div className="text-8xl md:text-9xl font-black text-white text-shadow-glow animate-pulse tracking-tighter">
+                      {gameId}
+                    </div>
+                    <div className="flex justify-center gap-4">
+                      <button 
+                         className="flex items-center gap-2 px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-slate-300 hover:text-white transition-all text-xs font-bold font-black"
+                         onClick={() => {
+                           const url = `${window.location.origin}${window.location.pathname}?join=${gameId}`;
+                           navigator.clipboard.writeText(url);
+                         }}
+                      >
+                        <Share2 className="w-4 h-4" />
+                        {tx('نسخ رابط الانضمام', 'Copy Invite Link')}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-4xl bg-white/5 border border-white/10 rounded-[3rem] p-10 flex flex-col gap-6 flex-1 min-h-[400px]">
+                     <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <Users className="text-indigo-400" />
+                           <h3 className="text-xl font-black text-white uppercase tracking-widest">{tx('اللاعبون في الانتظار', 'Players in Lobby')}</h3>
+                        </div>
+                        <div className="px-4 py-2 bg-indigo-600/20 text-indigo-400 rounded-full font-black text-sm">
+                           {sortedPlayers.length} {tx('لاعبين', 'Players')}
+                        </div>
+                     </div>
+
+                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-6">
+                        {sortedPlayers.map((player, idx) => (
+                          <div 
+                            key={player.id} 
+                            className="flex flex-col items-center gap-3 animate-in slide-in-from-bottom-4"
+                            style={{ animationDelay: `${idx * 100}ms` }}
+                          >
+                            <div className="p-2 bg-white/5 rounded-3xl border border-white/10 shadow-lg">
+                               <AnimalAvatarSVG id={player.avatar} color={AVATARS.find(a => a.id === player.avatar)?.color || '#333'} size={60} />
+                            </div>
+                            <span className="text-xs font-black text-white uppercase tracking-widest text-center truncate w-full px-2">{player.name}</span>
+                          </div>
+                        ))}
+                     </div>
+                  </div>
+
+                  <button 
+                    disabled={sortedPlayers.length === 0}
+                    onClick={hostStartGameTrigger}
+                    className="w-full max-w-sm bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-[0.3em] shadow-2xl transition-all active:scale-95 flex items-center justify-center gap-4"
+                  >
+                    <Play fill="currentColor" />
+                    {tx('ابدأ اللعبة الآن', 'Start Game')}
+                  </button>
+                </>
               ) : (
-                <button 
-                  onClick={resetToHome}
-                  className="flex-1 bg-white/5 border border-white/10 hover:border-white/20 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl"
-                >
-                  <LogOut />
-                  {tx('خروج للرئيسية', 'Back to Home')}
-                </button>
+                // Student Lobby UI
+                <div className="w-full text-center space-y-12 animate-in fade-in duration-600 py-10">
+                   <div className="space-y-6">
+                      <div className="relative inline-block">
+                         <div className="p-10 bg-indigo-600/10 rounded-full border border-indigo-500/20 animate-pulse">
+                            <AnimalAvatarSVG id={selectedAvatar} color={AVATARS.find(a => a.id === selectedAvatar)?.color || '#333'} size={120} />
+                         </div>
+                         <div className="absolute -bottom-2 -right-2 bg-emerald-500 text-white p-3 rounded-2xl shadow-xl shadow-emerald-500/20">
+                            <CheckCircle2 className="w-6 h-6" />
+                         </div>
+                      </div>
+                      <h2 className="text-3xl font-black text-white uppercase tracking-widest">{nickname}</h2>
+                      <div className="px-6 py-3 bg-white/5 border border-white/5 rounded-full inline-block">
+                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.4em]">{tx('تم الانضمام للغرفة', 'Joined Room')} {gameId}</span>
+                      </div>
+                   </div>
+
+                   <div className="space-y-4">
+                      <Loader2 className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
+                      <p className="text-xl font-black text-white uppercase tracking-widest">{tx('بانتظار المعلم لبدء اللعبة...', 'Waiting for host to start...')}</p>
+                   </div>
+                </div>
               )}
-           </div>
-        </div>
+            </div>
+          )}
+
+          {/* QUESTION PHASE */}
+          {gameState.status === 'question' && (
+            <div className="w-full max-w-4xl space-y-10 animate-in slide-in-from-bottom-10 duration-600">
+               {/* Header Stats */}
+               <div className="flex justify-between items-end px-4">
+                  <div className="space-y-1">
+                     <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{tx('التقدم', 'PROGRESS')}</span>
+                     <p className="text-lg font-black text-white uppercase">{tx('السؤال', 'Question')} {gameState.currentQuestion + 1} / {gameState.questions.length}</p>
+                  </div>
+                  {mode.startsWith('join_') ? (
+                    <div className="text-right space-y-1">
+                       <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">{tx('نقاطك', 'YOUR SCORE')}</span>
+                       <p className="text-lg font-black text-white">{gameState.players?.[playerId.current]?.score || 0}</p>
+                    </div>
+                  ) : (
+                     <div className="text-right space-y-1">
+                        <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{tx('الإجابات', 'RESPONSES')}</span>
+                        <p className="text-lg font-black text-white">{playerAnsweredCount} / {sortedPlayers.length}</p>
+                     </div>
+                  )}
+               </div>
+
+               <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300" 
+                    style={{ width: `${((gameState.currentQuestion + (mode.startsWith('join_') && gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion] ? 1 : 0)) / gameState.questions.length) * 100}%` }}
+                  />
+               </div>
+
+               {/* Question Card */}
+               <div className="bg-white/5 border border-white/10 p-10 md:p-14 rounded-[3rem] text-center space-y-10 shadow-2xl backdrop-blur-xl group perspective-1000 relative">
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 flex items-center gap-3 px-6 py-3 bg-indigo-600 rounded-2xl shadow-xl shadow-indigo-600/30">
+                     <Clock className="w-4 h-4 text-white" />
+                     <span className="text-lg font-black text-white">{Math.ceil(timeLeft)}s</span>
+                  </div>
+
+                  <h3 className="text-2xl md:text-3xl font-black text-white leading-tight uppercase pt-4 transition-all">
+                    {currentQ?.question || tx('جاري تحميل السؤال...', 'Loading question...')}
+                  </h3>
+
+                  {/* Progress Bar/Timer Detail */}
+                  <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden">
+                     <div 
+                       className={`h-full transition-all duration-150 ${timeLeft > 10 ? 'bg-emerald-500' : timeLeft > 5 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                       style={{ width: `${(timeLeft / 20) * 100}%` }}
+                     />
+                  </div>
+
+                  {/* Answers - Student Mode */}
+                  {mode.startsWith('join_') && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       {currentQ?.options.map((opt, i) => {
+                          const ans = gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion];
+                          const isSelected = ans?.selectedOption === opt;
+                          const hasAnswered = !!ans;
+                          return (
+                            <button
+                              key={i}
+                              disabled={hasAnswered || timeLeft <= 0}
+                              onClick={() => submitAnswer(opt)}
+                              className={`
+                                relative h-20 md:h-24 px-8 rounded-2xl font-black uppercase tracking-widest text-sm transition-all flex items-center justify-between group overflow-hidden
+                                ${isSelected ? 'bg-indigo-600 text-white shadow-[0_0_30px_rgba(99,102,241,0.5)]' : hasAnswered ? 'bg-white/5 text-slate-500 scale-95 opacity-50' : 'bg-white/10 hover:bg-white/20 text-white border border-white/10 hover:border-indigo-400/30 hover:-translate-y-1'}
+                              `}
+                            >
+                               <span className="relative z-10">{opt}</span>
+                               <div className="relative z-10 w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center font-black">
+                                  {['A','B','C','D'][i]}
+                               </div>
+                            </button>
+                          );
+                       })}
+                    </div>
+                  )}
+
+                  {/* Status - Join Screen After Answer */}
+                  {mode.startsWith('join_') && gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion] && (
+                     <div className="p-6 rounded-3xl bg-emerald-600/10 border border-emerald-500/20 text-indigo-400 animate-pulse font-black uppercase text-xl">
+                       {tx('تم تسجيل إجابتك بنجاح!', 'Answer recorded successfully!')}
+                     </div>
+                  )}
+
+                  {/* Host Control Side */}
+                  {mode.startsWith('host_') && (
+                     <div className="flex flex-col gap-6">
+                        <div className="grid grid-cols-2 gap-4 opacity-50">
+                           {currentQ?.options.map((opt, i) => (
+                              <div key={i} className="p-6 bg-white/5 rounded-2xl border border-white/5 text-slate-400 text-xs font-black uppercase">{opt}</div>
+                           ))}
+                        </div>
+                        
+                        <button 
+                          onClick={nextQuestion}
+                          className="group bg-indigo-600 hover:bg-indigo-500 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl transition-all overflow-hidden flex items-center justify-center gap-4 mt-4"
+                        >
+                           {tx('السؤال التالي', 'Next Question')}
+                           <ArrowRight className="group-hover:translate-x-2 transition-transform" />
+                        </button>
+                     </div>
+                  )}
+               </div>
+
+               {/* Score Popup for students */}
+               {scorePopup.show && (
+                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 z-[200] pointer-events-none text-emerald-400 text-8xl font-black animate-float-up text-shadow-glow">
+                     +{scorePopup.points}
+                  </div>
+               )}
+            </div>
+          )}
+
+          {/* RESULTS PHASE */}
+          {gameState.status === 'ended' && (
+            <div className="w-full max-w-4xl space-y-12 animate-in zoom-in duration-600">
+               <div className="text-center space-y-4 mb-20 relative">
+                  <div className="inline-flex p-5 bg-yellow-500/10 rounded-full border border-yellow-400/20 mb-4">
+                     <Trophy className="w-12 h-12 text-yellow-400 animate-bounce" />
+                  </div>
+                  <h2 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter">{tx('المنصة النهائية', 'The Podium')}</h2>
+               </div>
+
+               {/* Top 3 Podium */}
+               <div className="flex items-end justify-center gap-4 sm:gap-10 mb-20 h-64 md:h-80">
+                  {/* 2nd Place */}
+                  {sortedPlayers[1] && (
+                    <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-20 delay-200">
+                       <div className="relative">
+                          <div className="p-1 bg-slate-400 rounded-full">
+                             <div className="bg-slate-800 p-2 rounded-full border-4 border-slate-400">
+                                <AnimalAvatarSVG id={sortedPlayers[1].avatar} color={AVATARS.find(a => a.id === sortedPlayers[1].avatar)?.color || '#333'} size={60} />
+                             </div>
+                          </div>
+                          <div className="absolute -top-3 -right-3 w-8 h-8 rounded-full bg-slate-400 text-slate-900 font-bold flex items-center justify-center border-2 border-white/10 shadow-lg">2</div>
+                       </div>
+                       <div className="w-24 md:w-32 bg-gradient-to-b from-slate-400/40 to-transparent h-40 rounded-t-3xl border-x border-t border-slate-400/20 p-4 text-center">
+                          <span className="text-xs font-black text-white uppercase truncate block w-full">{sortedPlayers[1].name}</span>
+                          <span className="text-sm font-black text-slate-400">{sortedPlayers[1].score}</span>
+                       </div>
+                    </div>
+                  )}
+
+                  {/* 1st Place */}
+                  {sortedPlayers[0] && (
+                    <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-28">
+                       <div className="relative">
+                          <div className="p-1.5 bg-yellow-400 rounded-full shadow-[0_0_30px_rgba(251,191,36,0.6)]">
+                             <div className="bg-slate-900 p-3 rounded-full border-4 border-yellow-400">
+                                <AnimalAvatarSVG id={sortedPlayers[0].avatar} color={AVATARS.find(a => a.id === sortedPlayers[0].avatar)?.color || '#333'} size={80} />
+                             </div>
+                          </div>
+                          <div className="absolute -top-4 -right-4 w-10 h-10 rounded-full bg-yellow-400 text-slate-900 font-bold text-xl flex items-center justify-center border-2 border-white shadow-xl">1</div>
+                       </div>
+                       <div className="w-32 md:w-44 bg-gradient-to-b from-yellow-400/40 to-transparent h-56 rounded-t-[3rem] border-x border-t border-yellow-400/20 p-6 text-center">
+                          <span className="text-base font-black text-white uppercase truncate block w-full mb-1">{sortedPlayers[0].name}</span>
+                          <span className="text-xl font-black text-yellow-400">{sortedPlayers[0].score}</span>
+                       </div>
+                    </div>
+                  )}
+
+                  {/* 3rd Place */}
+                  {sortedPlayers[2] && (
+                    <div className="flex flex-col items-center gap-4 animate-in slide-in-from-bottom-16 delay-400">
+                       <div className="relative">
+                          <div className="p-1 bg-amber-700 rounded-full">
+                             <div className="bg-slate-900 p-2 rounded-full border-4 border-amber-700">
+                                <AnimalAvatarSVG id={sortedPlayers[2].avatar} color={AVATARS.find(a => a.id === sortedPlayers[2].avatar)?.color || '#333'} size={50} />
+                             </div>
+                          </div>
+                          <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-amber-700 text-white font-bold flex items-center justify-center border-2 border-white/10 shadow-lg">3</div>
+                       </div>
+                       <div className="w-20 md:w-28 bg-gradient-to-b from-amber-700/40 to-transparent h-32 rounded-t-3xl border-x border-t border-amber-700/20 p-4 text-center">
+                          <span className="text-[10px] font-black text-white uppercase truncate block w-full">{sortedPlayers[2].name}</span>
+                          <span className="text-xs font-black text-amber-700">{sortedPlayers[2].score}</span>
+                       </div>
+                    </div>
+                  )}
+               </div>
+
+               {/* Detailed Table */}
+               <div className="w-full bg-white/5 border border-white/10 rounded-[2.5rem] overflow-hidden drop-shadow-2xl">
+                  <table className="w-full text-left font-bold uppercase text-[10px] tracking-widest">
+                     <thead className="bg-white/5 border-b border-white/5">
+                        <tr>
+                           <th className="px-8 py-5 text-slate-500 font-black">{tx('الرتبة', 'RANK')}</th>
+                           <th className="px-8 py-5 text-slate-500 font-black">{tx('اللاعب', 'PLAYER')}</th>
+                           <th className="px-8 py-5 text-slate-500 font-black hidden md:table-cell">{tx('الإجابات', 'ACCURACY')}</th>
+                           <th className="px-8 py-5 text-right text-emerald-400 font-black">{tx('النتيجة', 'SCORE')}</th>
+                        </tr>
+                     </thead>
+                     <tbody className="divide-y divide-white/5">
+                        {sortedPlayers.map((p, i) => {
+                          const totalCorrect = p.answers ? Object.values(p.answers).filter(a => a.correct).length : 0;
+                          return (
+                            <tr key={p.id} className={`group hover:bg-white/5 transition-colors ${p.id === playerId.current ? 'bg-indigo-600/10' : ''}`}>
+                               <td className="px-8 py-6 font-black text-white text-lg">#{i + 1}</td>
+                               <td className="px-8 py-6">
+                                  <div className="flex items-center gap-4">
+                                     <AnimalAvatarSVG id={p.avatar} color={AVATARS.find(a => a.id === p.avatar)?.color || '#333'} size={40} />
+                                     <span className="text-sm text-white">{p.name} {p.id === playerId.current && <span className="text-indigo-400 ml-2">({tx('أنت', 'You')})</span>}</span>
+                                  </div>
+                               </td>
+                               <td className="px-8 py-6 hidden md:table-cell">
+                                  <div className="flex items-center gap-2">
+                                     <div className="flex-1 max-w-[100px] h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                        <div className="h-full bg-emerald-500" style={{ width: `${(totalCorrect / currentQuestionsCount) * 100}%` }} />
+                                     </div>
+                                     <span className="text-emerald-500">{totalCorrect}/{currentQuestionsCount}</span>
+                                  </div>
+                               </td>
+                               <td className="px-8 py-6 text-right font-black text-lg text-white">{p.score}</td>
+                            </tr>
+                          );
+                        })}
+                     </tbody>
+                  </table>
+               </div>
+
+               {/* Final Buttons */}
+               <div className="flex flex-col sm:flex-row gap-4 pt-10">
+                  {mode.startsWith('host_') ? (
+                    <button 
+                      onClick={endGame}
+                      className="flex-1 bg-red-600 hover:bg-red-700 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-red-900/20"
+                    >
+                      <LogOut />
+                      {tx('إنهاء اللعبة للجميع', 'End Game for All')}
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={resetToHome}
+                      className="flex-1 bg-white/5 border border-white/10 hover:border-white/20 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl"
+                    >
+                      <LogOut />
+                      {tx('خروج للرئيسية', 'Back to Home')}
+                    </button>
+                  )}
+               </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* --- Global Styles Overlays --- */}
