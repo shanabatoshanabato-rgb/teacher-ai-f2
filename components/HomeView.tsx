@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
   Star, PenTool, BookOpen, GraduationCap, ShieldCheck, 
-  Library, Mic, FileText, ArrowRight, Languages
+  Library, Mic, FileText, ArrowRight, Languages, FileCheck, Gamepad2
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -171,7 +171,11 @@ const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     feat7: 'مصنع الملفات',
     feat7d: 'توليد ملفات PDF و PPT ذكية.',
     feat8: 'المترجم الحي',
-    feat8d: 'ترجم كلامك فوراً بصوتك إلى أي لغة'
+    feat8d: 'ترجم كلامك فوراً بصوتك إلى أي لغة',
+    feat9: 'محسّن السيرة',
+    feat9d: 'حوّل سيرتك الذاتية لتتخطى أنظمة ATS لأي وظيفة',
+    feat10: 'العاب المعلم',
+    feat10d: 'العاب تعليمية تنافسية مع طلابك في الوقت الفعلي'
   } : {
     badge: 'TEACHER AI - YOUR SMART STUDY COMPANION',
     h1: 'TEACHER AI.',
@@ -195,14 +199,20 @@ const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     feat7: 'Doc Factory',
     feat7d: 'Generate smart PDF & PPT files.',
     feat8: 'Live Translator',
-    feat8d: 'Instantly translate your speech into any language.'
+    feat8d: 'Instantly translate your speech into any language.',
+    feat9: 'CV Booster',
+    feat9d: 'Transform your CV to pass ATS systems for any job',
+    feat10: 'Teacher Games',
+    feat10d: 'Competitive educational games with your students in real time'
   };
 
   const features = [
     { id: 'chat', title: t.feat1, desc: t.feat1d, icon: GraduationCap, color: 'text-blue-400', bg: 'bg-blue-400/10', glow: '59,130,246', border: 'hover:border-blue-500/40' },
+    { id: 'teacher_games', title: t.feat10, desc: t.feat10d, icon: Gamepad2, color: 'text-indigo-400', bg: 'bg-indigo-400/10', glow: '99,102,241', border: 'hover:border-indigo-500/40' },
     { id: 'teacher-uae', title: t.feat2, desc: t.feat2d, icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-400/10', glow: '16,185,129', border: 'hover:border-emerald-500/40' },
     { id: 'writer', title: t.feat3, desc: t.feat3d, icon: PenTool, color: 'text-amber-400', bg: 'bg-amber-400/10', glow: '251,191,36', border: 'hover:border-amber-500/40' },
     { id: 'homework', title: t.feat4, desc: t.feat4d, icon: BookOpen, color: 'text-purple-400', bg: 'bg-purple-400/10', glow: '167,139,250', border: 'hover:border-purple-500/40' },
+    { id: 'cv_booster', title: t.feat9, desc: t.feat9d, icon: FileCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/10', glow: '16,185,129', border: 'hover:border-emerald-500/40' },
     { id: 'islamic-hub', title: t.feat5, desc: t.feat5d, icon: Library, color: 'text-teal-400', bg: 'bg-teal-400/10', glow: '45,212,191', border: 'hover:border-teal-500/40' },
     { id: 'voice', title: t.feat6, desc: t.feat6d, icon: Mic, color: 'text-rose-400', bg: 'bg-rose-400/10', glow: '251,113,133', border: 'hover:border-rose-500/40' },
     { id: 'files', title: t.feat7, desc: t.feat7d, icon: FileText, color: 'text-sky-400', bg: 'bg-sky-400/10', glow: '56,189,248', border: 'hover:border-sky-500/40' },

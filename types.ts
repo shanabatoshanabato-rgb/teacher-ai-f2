@@ -1,5 +1,5 @@
 
-export type AppTab = 'home' | 'chat' | 'homework' | 'writer' | 'teacher-uae' | 'files' | 'islamic-hub' | 'settings' | 'voice' | 'translator';
+export type AppTab = 'home' | 'chat' | 'homework' | 'writer' | 'teacher-uae' | 'files' | 'islamic-hub' | 'settings' | 'voice' | 'translator' | 'cv_booster' | 'teacher_games';
 
 export interface ChatMessage {
   id: string;
