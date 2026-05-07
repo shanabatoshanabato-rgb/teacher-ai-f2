@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { 
   Star, PenTool, BookOpen, GraduationCap, ShieldCheck, 
-  Library, Mic, FileText, ArrowRight, Languages, Gamepad2
+  Library, Mic, FileText, ArrowRight, Languages, Gamepad2, Users
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -172,6 +172,8 @@ const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     feat7d: 'توليد ملفات PDF و PPT ذكية.',
     feat8: 'المترجم الحي',
     feat8d: 'ترجم كلامك فوراً بصوتك إلى أي لغة',
+    feat10: 'غرفة الدراسة',
+    feat10d: 'ادرس مع أصدقائك في غرفة مشتركة بالصوت والصورة',
   } : {
     badge: 'TEACHER AI - YOUR SMART STUDY COMPANION',
     h1: 'TEACHER AI.',
@@ -196,6 +198,8 @@ const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     feat7d: 'Generate smart PDF & PPT files.',
     feat8: 'Live Translator',
     feat8d: 'Instantly translate your speech into any language.',
+    feat10: 'Study Room',
+    feat10d: 'Study with friends in a shared room with video and audio',
   };
 
   const features = [
@@ -207,6 +211,7 @@ const HomeView: React.FC<HomeViewProps> = ({ setActiveTab }) => {
     { id: 'voice', title: t.feat6, desc: t.feat6d, icon: Mic, color: 'text-rose-400', bg: 'bg-rose-400/10', glow: '251,113,133', border: 'hover:border-rose-500/40' },
     { id: 'files', title: t.feat7, desc: t.feat7d, icon: FileText, color: 'text-sky-400', bg: 'bg-sky-400/10', glow: '56,189,248', border: 'hover:border-sky-500/40' },
     { id: 'translator', title: t.feat8, desc: t.feat8d, icon: Languages, color: 'text-cyan-400', bg: 'bg-cyan-400/10', glow: '34,211,238', border: 'hover:border-cyan-500/40' },
+    { id: 'study_room', title: t.feat10, desc: t.feat10d, icon: Users, color: 'text-purple-400', bg: 'bg-purple-400/10', glow: '167,139,250', border: 'hover:border-purple-500/40' },
   ];
 
 

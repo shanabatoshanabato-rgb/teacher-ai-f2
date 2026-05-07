@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { 
-  MessageSquare, BookOpen, PenTool, Layout, FileText, Settings as SettingsIcon, Sparkles, Mic, Menu, X, Globe, Library, GraduationCap, Brain, ShieldCheck, Languages
+  MessageSquare, BookOpen, PenTool, Layout, FileText, Settings as SettingsIcon, Sparkles, Mic, Menu, X, Globe, Library, GraduationCap, Brain, ShieldCheck, Languages, Users
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -23,6 +22,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'islamic-hub', label: isAr ? 'المكتبة الإسلامية' : 'Islamic Hub', icon: Library },
     { id: 'writer', label: isAr ? 'استوديو الكتابة' : 'Writer Studio', icon: PenTool },
     { id: 'files', label: isAr ? 'مصنع الملفات' : 'Doc Factory', icon: FileText },
+    { id: 'study_room', label: isAr ? 'غرفة الدراسة' : 'Study Room', icon: Users },
     { id: 'settings', label: isAr ? 'الإعدادات' : 'Settings', icon: SettingsIcon },
   ];
 
