@@ -83,6 +83,8 @@ REWRITING RULES:
 8. Remove: photos, graphics, tables, columns, special characters, emojis
 9. Output format: clean markdown, ## for sections, **bold** for company names and job titles, - for bullets
 
+CRITICAL: Output ONLY the rewritten CV. Do not include any introduction, explanation, commentary, or closing statement before or after the CV. Start directly with the candidate's name.
+
 KEYWORD ANALYSIS SECTION:
 After the rewritten CV, add a section titled "---ATS_ANALYSIS---" containing:
 - Keywords injected (list them)
@@ -102,11 +104,15 @@ Rewrite this CV to be fully ATS-optimized.`;
 
       const res = await runPuterAgent(userPrompt, undefined, undefined, lang, false, systemPrompt);
       
+      const hasAnalysis = res.text.includes('---ATS_ANALYSIS---');
       const analysisMatch = res.text.match(/---ATS_ANALYSIS---([\s\S]*?)(?=ATS_SCORE:|$)/);
       const analysisText = analysisMatch ? analysisMatch[1].trim() : null;
       const scoreMatch = res.text.match(/ATS_SCORE:\s*(\d+)/);
       const score = scoreMatch ? parseInt(scoreMatch[1]) : null;
-      const cleanCV = res.text.replace(/---ATS_ANALYSIS---[\s\S]*/, '').trim();
+      
+      const cleanCV = hasAnalysis 
+        ? res.text.replace(/---ATS_ANALYSIS---[\s\S]*/, '').trim()
+        : res.text.replace(/ATS_SCORE:\s*\d+/g, '').trim();
 
       setCurrentStep(3);
       setAtsScore(score);
