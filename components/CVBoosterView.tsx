@@ -123,6 +123,7 @@ Rewrite this CV to be fully ATS-optimized.`;
 
   const convertMarkdownToHTML = (md: string): string => {
     return md
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Strip links, keep text
       .replace(/^## (.+)$/gm, '<h2>$1</h2>')
       .replace(/^# (.+)$/gm, '<h1>$1</h1>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -173,7 +174,7 @@ Rewrite this CV to be fully ATS-optimized.`;
     `);
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
+    setTimeout(() => { printWindow.print(); }, 500);
   };
 
   const copyToClipboard = () => {
