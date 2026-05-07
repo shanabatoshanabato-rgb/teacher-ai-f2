@@ -382,11 +382,8 @@ Return only the JSON array.`;
 
     } catch (err: any) {
       console.error('Quiz generation error:', err);
-      setError(
-        isAr 
-          ? `فشل في توليد الأسئلة: ${err.message || 'خطأ غير معروف'}` 
-          : `Failed to generate: ${err.message || 'Unknown error'}`
-      );
+      // Detailed error reporting for debugging
+      setError(`ERROR: ${err?.message || err?.toString() || 'unknown'} | RAW: ${JSON.stringify(err).substring(0, 300)}`);
     } finally {
       setIsGenerating(false);
     }
