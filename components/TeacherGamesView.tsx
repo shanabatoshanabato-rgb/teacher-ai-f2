@@ -325,31 +325,68 @@ const TeacherGamesView: React.FC = () => {
     setIsGenerating(true);
     setError('');
     try {
-      const systemPrompt = `You are a quiz generator. 
-CRITICAL: return ONLY a raw JSON array. No markdown, no backticks, no introduction, no explanation.
-Format: [{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A"}]
-Generate exactly 10 questions.`;
-      const userPrompt = `Generate 10 multiple choice questions about: ${lessonName}
-Language: ${isAr ? 'Arabic' : 'English'}`;
+      const systemPrompt = `You are a JSON quiz generator. 
+Output ONLY a valid JSON array, nothing else.
+No markdown, no backticks, no text before or after.
+Exactly this format:
+[{"question":"...","options":["A) ...","B) ...","C) ...","D) ..."],"answer":"A"}]
+Generate exactly 10 questions. Answer field must be A, B, C, or D only.`;
 
-      const res = await runPuterAgent(userPrompt, undefined, undefined, isAr ? 'ar' : 'en', false, systemPrompt);
+      const userPrompt = `Topic: ${lessonName}
+Language: ${isAr ? 'Arabic' : 'English'}
+Return only the JSON array.`;
+
+      const res = await runPuterAgent(
+        userPrompt, 
+        undefined, 
+        undefined, 
+        isAr ? 'ar' : 'en', 
+        false, 
+        systemPrompt
+      );
+
+      const rawText: string = (res.text || (typeof res === 'string' ? res : '')) as string;
       
-      // Resilient Parsing: Extract JSON array even if AI included chatter
-      let cleaned = res.text.trim();
-      const jsonMatch = cleaned.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (jsonMatch) {
-        cleaned = jsonMatch[0];
-      } else {
-        cleaned = cleaned.replace(/```json/g, '').replace(/```/g, '').trim();
+      // محاولة استخراج JSON بطرق متعددة
+      let parsed = null;
+      
+      // طريقة 1: مباشرة
+      try {
+        parsed = JSON.parse(rawText.trim());
+      } catch {}
+      
+      // طريقة 2: استخراج array بـ regex
+      if (!parsed) {
+        const match = rawText.match(/\[[\s\S]*\]/);
+        if (match) {
+          try { parsed = JSON.parse(match[0]); } catch {}
+        }
+      }
+      
+      // طريقة 3: تنظيف backticks
+      if (!parsed) {
+        const cleaned = rawText
+          .replace(/```json/gi, '')
+          .replace(/```/g, '')
+          .trim();
+        try { parsed = JSON.parse(cleaned); } catch {}
       }
 
-      const parsed = JSON.parse(cleaned);
+      if (!parsed || !Array.isArray(parsed) || parsed.length === 0) {
+        throw new Error(`Invalid response: ${rawText.substring(0, 200)}`);
+      }
+
       setQuestions(parsed);
       setMode('host_lobby');
       startHostGame(parsed);
-    } catch (err) {
-      console.error(err);
-      setError(tx('فشل في توليد الأسئلة. حاول مرة أخرى.', 'Failed to generate questions. Try again.'));
+
+    } catch (err: any) {
+      console.error('Quiz generation error:', err);
+      setError(
+        isAr 
+          ? `فشل في توليد الأسئلة: ${err.message || 'خطأ غير معروف'}` 
+          : `Failed to generate: ${err.message || 'Unknown error'}`
+      );
     } finally {
       setIsGenerating(false);
     }
