@@ -63,6 +63,7 @@ const StudyRoomView: React.FC = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
   const roomRef = useRef<any>(null);
+  const streamsRef = useRef<Record<string, MediaStream>>({});
 
   const tx = (ar: string, en: string) => isAr ? ar : en;
 
@@ -138,6 +139,11 @@ const StudyRoomView: React.FC = () => {
   };
 
   const startRoom = async (code: string, host: boolean) => {
+    if (!window.isSecureContext && window.location.hostname !== 'localhost') {
+      setIsLoading(false);
+      return alert(tx('يجب استخدام HTTPS للوصول إلى الكاميرا والشاشة', 'HTTPS is required to access Camera and Screen Sharing'));
+    }
+
     const stream = await setupLocalMedia();
     if (!stream) {
       setIsLoading(false);
@@ -343,10 +349,13 @@ const StudyRoomView: React.FC = () => {
       const screenTrack = screenStream.getVideoTracks()[0];
 
       // Replace video track on ALL peer connections
-      Object.values(pcsRef.current).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-        sender?.replaceTrack(screenTrack);
-      });
+      await Promise.all(Object.values(pcsRef.current).map(async (pc) => {
+        const senders = pc.getSenders();
+        const videoSender = senders.find(s => s.track?.kind === 'video');
+        if (videoSender) {
+          await videoSender.replaceTrack(screenTrack);
+        }
+      }));
 
       // Update local view
       if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
@@ -359,13 +368,16 @@ const StudyRoomView: React.FC = () => {
     }
   };
 
-  const stopScreenShare = () => {
+  const stopScreenShare = async () => {
     const videoTrack = localStreamRef.current?.getVideoTracks()[0];
     if (videoTrack) {
-      Object.values(pcsRef.current).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-        sender?.replaceTrack(videoTrack);
-      });
+      await Promise.all(Object.values(pcsRef.current).map(async (pc) => {
+        const senders = pc.getSenders();
+        const videoSender = senders.find(s => s.track?.kind === 'video');
+        if (videoSender) {
+          await videoSender.replaceTrack(videoTrack);
+        }
+      }));
       if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
     }
     setIsSharing(false);
@@ -627,6 +639,15 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean }> = ({
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      // Handle auto-play issues on mobile/tablets
+      const playVideo = async () => {
+        try {
+          await videoRef.current?.play();
+        } catch (err) {
+          console.warn("Auto-play blocked, wait for user interaction");
+        }
+      };
+      playVideo();
     }
   }, [stream]);
 
