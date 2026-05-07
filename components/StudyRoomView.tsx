@@ -61,8 +61,10 @@ const StudyRoomView: React.FC = () => {
   // Refs for WebRTC
   const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
   const roomRef = useRef<any>(null);
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Record<string, MediaStream>>({});
   const streamsRef = useRef<Record<string, MediaStream>>({});
 
   const tx = (ar: string, en: string) => isAr ? ar : en;
@@ -251,11 +253,26 @@ const StudyRoomView: React.FC = () => {
       pc.addTrack(track, localStreamRef.current!);
     });
 
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => {
+        pc.addTrack(track, screenStreamRef.current!);
+      });
+    }
+
     pc.ontrack = (event) => {
-      setRemoteStreams(prev => ({
-        ...prev,
-        [otherId]: event.streams[0]
-      }));
+      const stream = event.streams[0];
+      // Detect if this is a screen stream based on some property or just stream count
+      // For now, we'll use stream.id to distinguish or just check track kind
+      if (event.track.kind === 'video') {
+         if (stream.id.includes('screen') || event.streams.length > 1 || stream.getVideoTracks().length > 1) {
+            setRemoteScreenStreams(prev => ({ ...prev, [otherId]: stream }));
+         } else {
+            setRemoteStreams(prev => ({ ...prev, [otherId]: stream }));
+         }
+      } else {
+         // Audio
+         setRemoteStreams(prev => ({ ...prev, [otherId]: stream }));
+      }
     };
 
     pc.onicecandidate = (event) => {
@@ -345,20 +362,24 @@ const StudyRoomView: React.FC = () => {
       return;
     }
     try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+        video: { cursor: "always" } as any,
+        audio: false 
+      });
+      // Tag the stream for easier identification
+      Object.defineProperty(screenStream, 'id', { value: `screen_${userId}` });
+      screenStreamRef.current = screenStream;
       const screenTrack = screenStream.getVideoTracks()[0];
 
-      // Replace video track on ALL peer connections
-      await Promise.all(Object.values(pcsRef.current).map(async (pc) => {
-        const senders = pc.getSenders();
-        const videoSender = senders.find(s => s.track?.kind === 'video');
-        if (videoSender) {
-          await videoSender.replaceTrack(screenTrack);
-        }
-      }));
+      // Add track to all PCs
+      Object.values(pcsRef.current).forEach(pc => {
+        pc.addTrack(screenTrack, screenStream);
+      });
 
-      // Update local view
-      if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
+      // Trigger renegotiation for all
+      participants.forEach(p => {
+        if (p.id !== userId) initiateCall(p.id);
+      });
 
       screenTrack.onended = stopScreenShare;
       setIsSharing(true);
@@ -369,16 +390,21 @@ const StudyRoomView: React.FC = () => {
   };
 
   const stopScreenShare = async () => {
-    const videoTrack = localStreamRef.current?.getVideoTracks()[0];
-    if (videoTrack) {
-      await Promise.all(Object.values(pcsRef.current).map(async (pc) => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      
+      // Remove track from PCs and renegotiate
+      Object.values(pcsRef.current).forEach(pc => {
         const senders = pc.getSenders();
-        const videoSender = senders.find(s => s.track?.kind === 'video');
-        if (videoSender) {
-          await videoSender.replaceTrack(videoTrack);
-        }
-      }));
-      if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+        const screenSender = senders.find(s => s.track?.id === screenStreamRef.current?.getVideoTracks()[0]?.id);
+        if (screenSender) pc.removeTrack(screenSender);
+      });
+
+      participants.forEach(p => {
+        if (p.id !== userId) initiateCall(p.id);
+      });
+      
+      screenStreamRef.current = null;
     }
     setIsSharing(false);
     updateDoc(doc(roomRef.current, 'participants', userId), { isSharing: false });
@@ -527,62 +553,103 @@ const StudyRoomView: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid of Video Tiles */}
-      <div className="flex-1 p-6 pb-28">
-        <div className={`grid h-full gap-6 ${participants.length <= 1 ? 'grid-cols-1' :
-          participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
-            participants.length <= 4 ? 'grid-cols-2' :
-              'grid-cols-2 lg:grid-cols-3'
-          }`}>
-          {/* Local Participant */}
-          <div className={`relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group ${isSharing ? 'ring-4 ring-emerald-500 animate-pulse' : ''}`}>
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`}
-            />
-            {isVideoOff && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/20 to-black">
-                <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
-                  <VideoOff className="w-10 h-10 text-slate-500" />
+      {/* Main Content Area */}
+      <div className="flex-1 p-4 md:p-6 pb-32 overflow-hidden flex flex-col">
+        {participants.find(p => p.isSharing) ? (
+          // Teams Style Layout
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {/* Screen Share Hero */}
+            <div className="flex-1 bg-[#0a0a0c] rounded-[2.5rem] border border-white/10 overflow-hidden relative shadow-2xl">
+              {participants.map(p => p.isSharing && (
+                <div key={p.id} className="w-full h-full">
+                  <RemoteVideo 
+                    stream={p.id === userId ? screenStreamRef.current! : remoteScreenStreams[p.id]} 
+                    isVideoOff={false} 
+                    className="w-full h-full object-contain"
+                  />
+                  <div className="absolute top-4 left-4 bg-emerald-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white animate-pulse">
+                    {p.name} {tx('يشارك الشاشة الآن', 'is sharing screen')}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Participants Bottom Bar */}
+            <div className="h-28 md:h-36 flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
+              {/* Me */}
+              <div className="min-w-[120px] md:min-w-[160px] h-full bg-[#111114] rounded-2xl border border-white/5 overflow-hidden relative snap-start">
+                <video ref={localVideoRef} autoPlay muted playsInline className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`} />
+                {isVideoOff && <div className="absolute inset-0 flex items-center justify-center text-slate-700"><VideoOff className="w-6 h-6" /></div>}
+                <div className="absolute bottom-2 left-2 right-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg text-[8px] font-black text-white uppercase truncate">
+                  {tx('أنا', 'Me')}
                 </div>
               </div>
-            )}
-
-            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
-              <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
-                <span className="text-[10px] font-black text-white uppercase tracking-widest">{userName} {tx('(أنت)', '(You)')}</span>
-                {isMuted && <MicOff className="w-3 h-3 text-red-500" />}
-              </div>
-              {isHost && <Shield className="w-4 h-4 text-indigo-400" />}
+              {/* Others */}
+              {participants.filter(p => p.id !== userId).map(p => (
+                <div key={p.id} className="min-w-[120px] md:min-w-[160px] h-full bg-[#111114] rounded-2xl border border-white/5 overflow-hidden relative snap-start">
+                  <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg text-[8px] font-black text-white uppercase truncate">
+                    {p.name}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-
-          {/* Remote Participants */}
-          {participants.filter(p => p.id !== userId).map(p => (
-            <div key={p.id} className={`relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group ${p.isSharing ? 'ring-4 ring-emerald-500 animate-pulse' : ''}`}>
-              <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} />
-
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-10">
-                <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
-                  <span className="text-[10px] font-black text-white uppercase tracking-widest">{p.name}</span>
-                  {p.isMuted && <MicOff className="w-3 h-3 text-red-500" />}
+        ) : (
+          // Normal Grid Layout
+          <div className={`grid h-full gap-4 md:gap-6 ${
+            participants.length <= 1 ? 'grid-cols-1' :
+            participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
+            participants.length <= 4 ? 'grid-cols-2' :
+            'grid-cols-2 lg:grid-cols-3'
+          }`}>
+            {/* Local Participant */}
+            <div className="relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group">
+              <video 
+                ref={localVideoRef} 
+                autoPlay 
+                muted 
+                playsInline 
+                className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`}
+              />
+              {isVideoOff && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/20 to-black">
+                  <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
+                     <VideoOff className="w-10 h-10 text-slate-500" />
+                  </div>
                 </div>
-
-                {isHost && (
-                  <button
-                    onClick={() => removeParticipant(p.id)}
-                    className="p-3 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
+              )}
+              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+                <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
+                  <span className="text-[10px] font-black text-white uppercase tracking-widest">{userName} {tx('(أنت)', '(You)')}</span>
+                  {isMuted && <MicOff className="w-3 h-3 text-red-500" />}
+                </div>
+                {isHost && <Shield className="w-4 h-4 text-indigo-400" />}
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* Remote Participants */}
+            {participants.filter(p => p.id !== userId).map(p => (
+              <div key={p.id} className="relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group">
+                <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-10">
+                  <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
+                    <span className="text-[10px] font-black text-white uppercase tracking-widest">{p.name}</span>
+                    {p.isMuted && <MicOff className="w-3 h-3 text-red-500" />}
+                  </div>
+                  {isHost && (
+                    <button 
+                      onClick={() => removeParticipant(p.id)}
+                      className="p-3 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white rounded-xl transition-all opacity-0 group-hover:opacity-100 backdrop-blur-md"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -633,7 +700,7 @@ const StudyRoomView: React.FC = () => {
   );
 };
 
-const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean }> = ({ stream, isVideoOff }) => {
+const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; className?: string }> = ({ stream, isVideoOff, className = '' }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -642,7 +709,7 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean }> = ({
       // Handle auto-play issues on mobile/tablets
       const playVideo = async () => {
         try {
-          await videoRef.current?.play();
+          if (videoRef.current) await videoRef.current.play();
         } catch (err) {
           console.warn("Auto-play blocked, wait for user interaction");
         }
@@ -653,11 +720,11 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean }> = ({
 
   return (
     <>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        className={`w-full h-full object-cover ${isVideoOff ? 'hidden' : ''}`}
+      <video 
+        ref={videoRef} 
+        autoPlay 
+        playsInline 
+        className={`${className} ${isVideoOff ? 'hidden' : ''}`}
       />
       {isVideoOff && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/10 to-black">
@@ -674,6 +741,17 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean }> = ({
 const AR_STYLE = `
   .mirror {
     transform: scaleX(-1);
+  }
+  button {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
 `;
 
