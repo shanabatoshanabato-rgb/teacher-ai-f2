@@ -68,8 +68,13 @@ const StudyRoomView: React.FC = () => {
 
   // Cleanup on unmount
   useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = AR_STYLE;
+    document.head.appendChild(style);
+    
     return () => {
       leaveRoom();
+      document.head.removeChild(style);
     };
   }, []);
 
