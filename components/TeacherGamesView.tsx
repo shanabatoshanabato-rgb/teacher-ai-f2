@@ -856,21 +856,21 @@ Return only the JSON array.`;
                 </div>
 
                 <h3 className="text-2xl md:text-3xl font-black text-white leading-tight uppercase pt-4 transition-all">
-                  {currentQ?.question || (currentQ as any)?.text || (currentQ as any)?.q || tx('جاري تحميل السؤال...', 'Loading question...')}
+                  {currentQ?.question || (currentQ as any)?.q || (currentQ as any)?.text || (currentQ as any)?.Question || tx('جاري تحميل السؤال...', 'Loading question...')}
                 </h3>
 
                 {/* Progress Bar/Timer Detail */}
                 <div className="h-3 w-full bg-white/5 rounded-full overflow-hidden">
                   <div
                     className={`h-full transition-all duration-150 ${timeLeft > 10 ? 'bg-emerald-500' : timeLeft > 5 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                    style={{ width: `${(timeLeft / 20) * 100}%` }}
+                    style={{ width: `${(timeLeft / (gameState?.gameTime || 20)) * 100}%` }}
                   />
                 </div>
 
                 {/* Answers - Student Mode */}
                 {mode.startsWith('join_') && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentQ?.options?.map((opt, i) => {
+                    {(currentQ?.options || (currentQ as any)?.choices || [])?.map((opt: any, i: number) => {
                       const ans = gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion];
                       const isSelected = ans?.selectedOption === opt;
                       const hasAnswered = !!ans;
