@@ -353,21 +353,28 @@ Rewrite this CV to be fully ATS-optimized.`;
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                <button 
-                  onClick={downloadAsPDF}
-                  className="p-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl transition-all active:scale-95 shadow-lg group flex items-center gap-3"
-                >
-                  <Download className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">{tx('تحميل PDF', 'DOWNLOAD PDF')}</span>
-                </button>
-                <button 
-                  onClick={copyToClipboard}
-                  className="p-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-2xl transition-all active:scale-95 group flex items-center gap-3"
-                >
-                  {isCopied ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">{isCopied ? tx('تم النسخ', 'COPIED') : tx('نسخ النص', 'COPY TEXT')}</span>
-                </button>
+              <div className="flex flex-col items-center gap-4 shrink-0">
+                <p className="text-slate-500 text-[10px] text-center font-bold uppercase tracking-wider animate-pulse">
+                  {cvLang === 'ar' 
+                    ? 'في نافذة الطباعة: اختر "المزيد من الإعدادات" وأوقف "الرؤوس والتذييلات"' 
+                    : 'In print dialog: select "More settings" and disable "Headers and footers"'}
+                </p>
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={downloadAsPDF}
+                    className="p-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl transition-all active:scale-95 shadow-lg group flex items-center gap-3"
+                  >
+                    <Download className="w-5 h-5 group-hover:-translate-y-1 transition-transform" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{tx('تحميل PDF', 'DOWNLOAD PDF')}</span>
+                  </button>
+                  <button 
+                    onClick={copyToClipboard}
+                    className="p-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-2xl transition-all active:scale-95 group flex items-center gap-3"
+                  >
+                    {isCopied ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <Copy className="w-5 h-5 group-hover:scale-110 transition-transform" />}
+                    <span className="text-[10px] font-black uppercase tracking-widest">{isCopied ? tx('تم النسخ', 'COPIED') : tx('نسخ النص', 'COPY TEXT')}</span>
+                  </button>
+                </div>
               </div>
             </div>
 
