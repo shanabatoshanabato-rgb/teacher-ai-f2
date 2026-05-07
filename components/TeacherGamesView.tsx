@@ -844,7 +844,7 @@ Return only the JSON array.`;
                 {/* Answers - Student Mode */}
                 {mode.startsWith('join_') && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {currentQ?.options.map((opt, i) => {
+                    {currentQ?.options?.map((opt, i) => {
                       const ans = gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion];
                       const isSelected = ans?.selectedOption === opt;
                       const hasAnswered = !!ans;
@@ -879,7 +879,7 @@ Return only the JSON array.`;
                 {mode.startsWith('host_') && (
                   <div className="flex flex-col gap-6">
                     <div className="grid grid-cols-2 gap-4 opacity-50">
-                      {currentQ?.options.map((opt, i) => (
+                      {currentQ?.options?.map((opt, i) => (
                         <div key={i} className="p-6 bg-white/5 rounded-2xl border border-white/5 text-slate-400 text-xs font-black uppercase">{opt}</div>
                       ))}
                     </div>
