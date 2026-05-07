@@ -517,7 +517,7 @@ Return only the JSON array.`;
 
   // --- Render Helpers ---
 
-  const currentQuestionsCount = gameState?.questions.length || 0;
+  const currentQuestionsCount = gameState?.questions?.length || 0;
   const currentQ = gameState?.questions?.[gameState.currentQuestion];
   const sortedPlayers = useMemo(() => {
     if (!gameState?.players) return [];
@@ -800,7 +800,7 @@ Return only the JSON array.`;
               <div className="flex justify-between items-end px-4">
                 <div className="space-y-1">
                   <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{tx('التقدم', 'PROGRESS')}</span>
-                  <p className="text-lg font-black text-white uppercase">{tx('السؤال', 'Question')} {gameState.currentQuestion + 1} / {gameState.questions.length}</p>
+                  <p className="text-lg font-black text-white uppercase">{tx('السؤال', 'Question')} {gameState.currentQuestion + 1} / {gameState?.questions?.length || 0}</p>
                 </div>
                 {mode.startsWith('join_') ? (
                   <div className="text-right space-y-1">
@@ -818,7 +818,7 @@ Return only the JSON array.`;
               <div className="relative h-2 w-full bg-white/5 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300"
-                  style={{ width: `${((gameState.currentQuestion + (mode.startsWith('join_') && gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion] ? 1 : 0)) / gameState.questions.length) * 100}%` }}
+                  style={{ width: `${((gameState.currentQuestion + (mode.startsWith('join_') && gameState.players?.[playerId.current]?.answers?.[gameState.currentQuestion] ? 1 : 0)) / (gameState?.questions?.length || 1)) * 100}%` }}
                 />
               </div>
 
