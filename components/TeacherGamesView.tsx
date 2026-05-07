@@ -297,19 +297,30 @@ const TeacherGamesView: React.FC = () => {
       if (data) {
         setGameState(data);
         
-        // Auto-transition modes for joined students
+        // Auto-transition modes for students
         if (hasJoined && mode.startsWith('join_')) {
           if (data.status === 'lobby' && mode !== 'join_lobby') setMode('join_lobby');
           else if (data.status === 'question' && mode !== 'join_question') setMode('join_question');
           else if (data.status === 'ended' && mode !== 'join_result') setMode('join_result');
         }
-      } else if (mode === 'host_lobby' || mode === 'host_question' || mode === 'host_results') {
-        // Host was in a game and it was deleted
-        resetToHome();
-      } else if (mode.startsWith('join_') && hasJoined) {
-        // Student was in a game and it was deleted
-        setError(tx('تم إغلاق الغرفة.', 'Room has been closed.'));
-        resetToHome();
+        
+        // Auto-transition modes for host (e.g. on refresh or sync)
+        if (data.hostId === playerId.current) {
+          if (data.status === 'lobby' && mode !== 'host_lobby' && mode !== 'host_setup') setMode('host_lobby');
+          else if (data.status === 'question' && mode !== 'host_question') setMode('host_question');
+          else if (data.status === 'active' && mode !== 'host_question') setMode('host_question');
+          else if (data.status === 'ended' && mode !== 'host_results') setMode('host_results');
+        }
+      } else {
+        // Room doesn't exist
+        // Only reset if we were already "in" a game mode
+        const isInGame = (mode.startsWith('host_') && mode !== 'host_setup') || (mode.startsWith('join_') && hasJoined);
+        if (isInGame) {
+          if (mode.startsWith('join_')) {
+            setError(tx('تم إغلاق الغرفة.', 'Room has been closed.'));
+          }
+          resetToHome();
+        }
       }
     });
 
