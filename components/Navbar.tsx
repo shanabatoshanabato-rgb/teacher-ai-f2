@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { 
-  MessageSquare, BookOpen, PenTool, Layout, FileText, Settings as SettingsIcon, Sparkles, Mic, Menu, X, Globe, Library, GraduationCap, Brain, ShieldCheck, Languages
+  MessageSquare, BookOpen, PenTool, Layout, FileText, Settings as SettingsIcon, Sparkles, Mic, Menu, X, Globe, Library, GraduationCap, Brain, ShieldCheck, Languages, FileCheck
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -18,6 +18,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'chat', label: isAr ? 'المحادثة' : 'Chat', icon: MessageSquare },
     { id: 'voice', label: isAr ? 'الوضع الصوتي' : 'Voice Mode', icon: Mic },
     { id: 'translator', label: isAr ? 'المترجم الحي' : 'Live Translator', icon: Languages },
+    { id: 'cv_booster', label: isAr ? 'محسّن السيرة' : 'CV Booster', icon: FileCheck },
     { id: 'teacher-uae', label: isAr ? 'منهاج الإمارات' : 'UAE Teacher', icon: ShieldCheck },
     { id: 'homework', label: isAr ? 'مساعد الواجبات' : 'Homework AI', icon: BookOpen },
     { id: 'islamic-hub', label: isAr ? 'المكتبة الإسلامية' : 'Islamic Hub', icon: Library },
@@ -40,7 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
             onClick={() => handleTabClick('home')}
           >
             <div className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl transition-colors ${activeTab === 'home' ? 'bg-white text-black' : 'bg-indigo-600 text-white'}`}>
-              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
+              < GraduationCap className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <span className="text-base sm:text-xl font-bold text-white tracking-tighter uppercase">TEACHER AI</span>
           </div>

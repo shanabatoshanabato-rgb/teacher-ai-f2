@@ -16,34 +16,34 @@ interface LangOption {
 }
 
 const LANGUAGES: LangOption[] = [
-  { code: 'en-US', label: 'English (US)',           labelAr: 'الإنجليزية (أمريكا)',   flag: '🇺🇸', region: 'Americas' },
-  { code: 'en-GB', label: 'English (UK)',            labelAr: 'الإنجليزية (بريطانيا)', flag: '🇬🇧', region: 'Europe' },
-  { code: 'ar-SA', label: 'Arabic',                  labelAr: 'العربية',               flag: '🇸🇦', region: 'Middle East' },
-  { code: 'fr-FR', label: 'French',                  labelAr: 'الفرنسية',              flag: '🇫🇷', region: 'Europe' },
-  { code: 'es-ES', label: 'Spanish',                 labelAr: 'الإسبانية',             flag: '🇪🇸', region: 'Europe' },
-  { code: 'pt-BR', label: 'Portuguese (BR)',         labelAr: 'البرتغالية (البرازيل)', flag: '🇧🇷', region: 'Americas' },
-  { code: 'de-DE', label: 'German',                  labelAr: 'الألمانية',             flag: '🇩🇪', region: 'Europe' },
-  { code: 'it-IT', label: 'Italian',                 labelAr: 'الإيطالية',             flag: '🇮🇹', region: 'Europe' },
-  { code: 'nl-NL', label: 'Dutch',                   labelAr: 'الهولندية',             flag: '🇳🇱', region: 'Europe' },
-  { code: 'ru-RU', label: 'Russian',                 labelAr: 'الروسية',               flag: '🇷🇺', region: 'Europe' },
-  { code: 'tr-TR', label: 'Turkish',                 labelAr: 'التركية',               flag: '🇹🇷', region: 'Middle East' },
-  { code: 'fa-IR', label: 'Persian',                 labelAr: 'الفارسية',              flag: '🇮🇷', region: 'Middle East' },
-  { code: 'ur-PK', label: 'Urdu',                    labelAr: 'الأردية',               flag: '🇵🇰', region: 'Asia' },
-  { code: 'hi-IN', label: 'Hindi',                   labelAr: 'الهندية',               flag: '🇮🇳', region: 'Asia' },
-  { code: 'bn-BD', label: 'Bengali',                 labelAr: 'البنغالية',             flag: '🇧🇩', region: 'Asia' },
-  { code: 'id-ID', label: 'Indonesian',              labelAr: 'الإندونيسية',           flag: '🇮🇩', region: 'Asia' },
-  { code: 'ms-MY', label: 'Malay',                   labelAr: 'الملايوية',             flag: '🇲🇾', region: 'Asia' },
-  { code: 'th-TH', label: 'Thai',                    labelAr: 'التايلاندية',           flag: '🇹🇭', region: 'Asia' },
-  { code: 'vi-VN', label: 'Vietnamese',              labelAr: 'الفيتنامية',            flag: '🇻🇳', region: 'Asia' },
-  { code: 'zh-CN', label: 'Chinese (Simplified)',    labelAr: 'الصينية (مبسطة)',       flag: '🇨🇳', region: 'Asia' },
-  { code: 'zh-TW', label: 'Chinese (Traditional)', labelAr: 'الصينية (تقليدية)',     flag: '🇹🇼', region: 'Asia' },
-  { code: 'ja-JP', label: 'Japanese',                labelAr: 'اليابانية',             flag: '🇯🇵', region: 'Asia' },
-  { code: 'ko-KR', label: 'Korean',                  labelAr: 'الكورية',               flag: '🇰🇷', region: 'Asia' },
-  { code: 'sv-SE', label: 'Swedish',                 labelAr: 'السويدية',              flag: '🇸🇪', region: 'Europe' },
-  { code: 'pl-PL', label: 'Polish',                  labelAr: 'البولندية',             flag: '🇵🇱', region: 'Europe' },
+  { code: 'en-US', label: 'English (US)', labelAr: 'الإنجليزية (أمريكا)', flag: '🇺🇸', region: 'Americas' },
+  { code: 'en-GB', label: 'English (UK)', labelAr: 'الإنجليزية (بريطانيا)', flag: '🇬🇧', region: 'Europe' },
+  { code: 'ar-SA', label: 'Arabic', labelAr: 'العربية', flag: '🇸🇦', region: 'Middle East' },
+  { code: 'fr-FR', label: 'French', labelAr: 'الفرنسية', flag: '🇫🇷', region: 'Europe' },
+  { code: 'es-ES', label: 'Spanish', labelAr: 'الإسبانية', flag: '🇪🇸', region: 'Europe' },
+  { code: 'pt-BR', label: 'Portuguese (BR)', labelAr: 'البرتغالية (البرازيل)', flag: '🇧🇷', region: 'Americas' },
+  { code: 'de-DE', label: 'German', labelAr: 'الألمانية', flag: '🇩🇪', region: 'Europe' },
+  { code: 'it-IT', label: 'Italian', labelAr: 'الإيطالية', flag: '🇮🇹', region: 'Europe' },
+  { code: 'nl-NL', label: 'Dutch', labelAr: 'الهولندية', flag: '🇳🇱', region: 'Europe' },
+  { code: 'ru-RU', label: 'Russian', labelAr: 'الروسية', flag: '🇷🇺', region: 'Europe' },
+  { code: 'tr-TR', label: 'Turkish', labelAr: 'التركية', flag: '🇹🇷', region: 'Middle East' },
+  { code: 'fa-IR', label: 'Persian', labelAr: 'الفارسية', flag: '🇮🇷', region: 'Middle East' },
+  { code: 'ur-PK', label: 'Urdu', labelAr: 'الأردية', flag: '🇵🇰', region: 'Asia' },
+  { code: 'hi-IN', label: 'Hindi', labelAr: 'الهندية', flag: '🇮🇳', region: 'Asia' },
+  { code: 'bn-BD', label: 'Bengali', labelAr: 'البنغالية', flag: '🇧🇩', region: 'Asia' },
+  { code: 'id-ID', label: 'Indonesian', labelAr: 'الإندونيسية', flag: '🇮🇩', region: 'Asia' },
+  { code: 'ms-MY', label: 'Malay', labelAr: 'الملايوية', flag: '🇲🇾', region: 'Asia' },
+  { code: 'th-TH', label: 'Thai', labelAr: 'التايلاندية', flag: '🇹🇭', region: 'Asia' },
+  { code: 'vi-VN', label: 'Vietnamese', labelAr: 'الفيتنامية', flag: '🇻🇳', region: 'Asia' },
+  { code: 'zh-CN', label: 'Chinese (Simplified)', labelAr: 'الصينية (مبسطة)', flag: '🇨🇳', region: 'Asia' },
+  { code: 'zh-TW', label: 'Chinese (Traditional)', labelAr: 'الصينية (تقليدية)', flag: '🇹🇼', region: 'Asia' },
+  { code: 'ja-JP', label: 'Japanese', labelAr: 'اليابانية', flag: '🇯🇵', region: 'Asia' },
+  { code: 'ko-KR', label: 'Korean', labelAr: 'الكورية', flag: '🇰🇷', region: 'Asia' },
+  { code: 'sv-SE', label: 'Swedish', labelAr: 'السويدية', flag: '🇸🇪', region: 'Europe' },
+  { code: 'pl-PL', label: 'Polish', labelAr: 'البولندية', flag: '🇵🇱', region: 'Europe' },
 ];
 
-const isRTL = (code: string) => ['ar-SA','ur-PK','fa-IR','he-IL'].some(c => code.startsWith(c.split('-')[0]));
+const isRTL = (code: string) => ['ar-SA', 'ur-PK', 'fa-IR', 'he-IL'].some(c => code.startsWith(c.split('-')[0]));
 
 // ── TTS ───────────────────────────────────────────────────────────
 function speakText(text: string, langCode: string) {
@@ -113,8 +113,10 @@ const LangModal: React.FC<{
                   <button key={lang.code}
                     onClick={() => { onSelect(lang); onClose(); }}
                     className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl hover:bg-white/6 transition-all text-left"
-                    style={{ background: value.code === lang.code ? 'rgba(6,182,212,0.12)' : undefined,
-                             border: value.code === lang.code ? '1px solid rgba(6,182,212,0.3)' : '1px solid transparent' }}>
+                    style={{
+                      background: value.code === lang.code ? 'rgba(6,182,212,0.12)' : undefined,
+                      border: value.code === lang.code ? '1px solid rgba(6,182,212,0.3)' : '1px solid transparent'
+                    }}>
                     <span className="text-xl">{lang.flag}</span>
                     <div className="min-w-0">
                       <p className={`font-bold text-xs truncate ${value.code === lang.code ? 'text-cyan-300' : 'text-slate-200'}`}>
@@ -136,7 +138,7 @@ const LangModal: React.FC<{
 // ── Waveform Bars ─────────────────────────────────────────────────
 const Waveform: React.FC<{ active: boolean }> = ({ active }) => (
   <div className="flex items-center justify-center gap-[4px]" style={{ height: 40 }}>
-    {[0.4,0.7,1,0.6,0.9,0.5,1,0.7,0.4,0.8,0.6,1,0.5].map((h, i) => (
+    {[0.4, 0.7, 1, 0.6, 0.9, 0.5, 1, 0.7, 0.4, 0.8, 0.6, 1, 0.5].map((h, i) => (
       <div key={i} className="rounded-full"
         style={{
           width: 3, background: active ? `rgba(6,182,212,${0.4 + h * 0.6})` : 'rgba(255,255,255,0.07)',
@@ -152,21 +154,21 @@ const Waveform: React.FC<{ active: boolean }> = ({ active }) => (
 const TranslatorView: React.FC = () => {
   const isAr = document.documentElement.lang === 'ar';
 
-  const [state, setState]           = useState<TranslatorState>('idle');
-  const [mode, setMode]             = useState<InputMode>('voice');
-  const [srcLang, setSrcLang]       = useState<LangOption>(LANGUAGES.find(l => l.code === (isAr ? 'ar-SA' : 'en-US'))!);
-  const [tgtLang, setTgtLang]       = useState<LangOption>(LANGUAGES.find(l => l.code === (isAr ? 'en-US' : 'ar-SA'))!);
-  const [srcModal, setSrcModal]     = useState(false);
-  const [tgtModal, setTgtModal]     = useState(false);
+  const [state, setState] = useState<TranslatorState>('idle');
+  const [mode, setMode] = useState<InputMode>('voice');
+  const [srcLang, setSrcLang] = useState<LangOption>(LANGUAGES.find(l => l.code === (isAr ? 'ar-SA' : 'en-US'))!);
+  const [tgtLang, setTgtLang] = useState<LangOption>(LANGUAGES.find(l => l.code === (isAr ? 'en-US' : 'ar-SA'))!);
+  const [srcModal, setSrcModal] = useState(false);
+  const [tgtModal, setTgtModal] = useState(false);
   const [sourceText, setSourceText] = useState('');
   const [manualText, setManualText] = useState('');
   const [translated, setTranslated] = useState('');
-  const [error, setError]           = useState('');
-  const [copied, setCopied]         = useState(false);
-  const [liveText, setLiveText]     = useState(''); 
-  const recognitionRef              = useRef<any>(null);
-  const isManualStopRef             = useRef(false);
-  const isProcessingRef             = useRef(false); // Guard to prevent double translation/speech
+  const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [liveText, setLiveText] = useState('');
+  const recognitionRef = useRef<any>(null);
+  const isManualStopRef = useRef(false);
+  const isProcessingRef = useRef(false); // Guard to prevent double translation/speech
 
   const reset = useCallback(() => {
     isManualStopRef.current = true;
@@ -178,20 +180,20 @@ const TranslatorView: React.FC = () => {
 
   const translate = useCallback(async (text: string) => {
     if (!text.trim() || isProcessingRef.current) return;
-    
+
     isProcessingRef.current = true;
     setSourceText(text); setState('translating'); setError('');
-    
+
     try {
       const name = isAr ? tgtLang.labelAr : tgtLang.label;
-      const res  = await runPuterAgent(
+      const res = await runPuterAgent(
         `Translate the following text to ${name}. Return ONLY the translated text, nothing else.\n\n${text}`,
         undefined, undefined, 'en', false
       );
-      const out = res.text.replace(/^["'`]|["'`]$/g,'').trim();
-      setTranslated(out); 
-      setState('done'); 
-      
+      const out = res.text.replace(/^["'`]|["'`]$/g, '').trim();
+      setTranslated(out);
+      setState('done');
+
       // Automatic speech once
       speakText(out, tgtLang.code);
     } catch {
@@ -204,17 +206,17 @@ const TranslatorView: React.FC = () => {
 
   const startListening = useCallback(() => {
     setError(''); setSourceText(''); setTranslated('');
-    setLiveText(''); 
+    setLiveText('');
     isManualStopRef.current = false;
     setState('listening');
 
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setError(isAr ? 'المتصفح لا يدعم الصوت.' : 'Speech recognition not supported.'); setState('idle'); return; }
 
-    const rec          = new SR();
-    rec.continuous     = true;
+    const rec = new SR();
+    rec.continuous = true;
     rec.interimResults = true;
-    rec.lang           = srcLang.code;
+    rec.lang = srcLang.code;
     recognitionRef.current = rec;
 
     rec.onresult = (e: any) => {
@@ -238,7 +240,7 @@ const TranslatorView: React.FC = () => {
         setState(s => s === 'listening' ? 'idle' : s);
       }
     };
-    
+
     rec.start();
   }, [srcLang, isAr]);
 
@@ -253,30 +255,30 @@ const TranslatorView: React.FC = () => {
   const swap = () => { const t = srcLang; setSrcLang(tgtLang); setTgtLang(t); reset(); };
   const copy = async () => { await navigator.clipboard.writeText(translated); setCopied(true); setTimeout(() => setCopied(false), 2000); };
 
-  const isListening   = state === 'listening';
+  const isListening = state === 'listening';
   const isTranslating = state === 'translating';
-  const isDone        = state === 'done';
+  const isDone = state === 'done';
 
   const ui = {
-    src:     isAr ? 'من' : 'From',
-    tgt:     isAr ? 'إلى' : 'To',
-    voice:   isAr ? 'صوتي' : 'Voice',
-    text:    isAr ? 'كتابة' : 'Text',
-    tap:     isAr ? 'اضغط واتكلم' : 'Tap & speak',
-    listen:  isAr ? 'تكلم... اضغط إيقاف عند الانتهاء ↓' : 'Speaking... press Stop when done ↓',
+    src: isAr ? 'من' : 'From',
+    tgt: isAr ? 'إلى' : 'To',
+    voice: isAr ? 'صوتي' : 'Voice',
+    text: isAr ? 'كتابة' : 'Text',
+    tap: isAr ? 'اضغط واتكلم' : 'Tap & speak',
+    listen: isAr ? 'تكلم... اضغط إيقاف عند الانتهاء ↓' : 'Speaking... press Stop when done ↓',
     loading: isAr ? 'جارٍ الترجمة...' : 'Translating...',
-    result:  isAr ? 'الترجمة' : 'Translation',
-    said:    isAr ? 'قلت' : 'You said',
-    play:    isAr ? 'استمع' : 'Play',
+    result: isAr ? 'الترجمة' : 'Translation',
+    said: isAr ? 'قلت' : 'You said',
+    play: isAr ? 'استمع' : 'Play',
     copyBtn: isAr ? 'نسخ' : 'Copy',
-    copied:  isAr ? '✓ تم' : '✓ Copied',
-    again:   isAr ? 'مرة أخرى' : 'Again',
-    clear:   isAr ? 'مسح' : 'Clear',
-    ph:      isAr ? 'اكتب هنا...' : 'Type here...',
-    go:      isAr ? 'ترجم' : 'Translate',
-    hint:    isAr ? 'Ctrl+Enter' : 'Ctrl+Enter',
-    empty:   isAr ? 'الترجمة ستظهر هنا' : 'Translation appears here',
-    recog:   isAr ? `يتعرف على: ${srcLang.flag} ${srcLang.labelAr}` : `Recognizing: ${srcLang.flag} ${srcLang.label}`,
+    copied: isAr ? '✓ تم' : '✓ Copied',
+    again: isAr ? 'مرة أخرى' : 'Again',
+    clear: isAr ? 'مسح' : 'Clear',
+    ph: isAr ? 'اكتب هنا...' : 'Type here...',
+    go: isAr ? 'ترجم' : 'Translate',
+    hint: isAr ? 'Ctrl+Enter' : 'Ctrl+Enter',
+    empty: isAr ? 'الترجمة ستظهر هنا' : 'Translation appears here',
+    recog: isAr ? `يتعرف على: ${srcLang.flag} ${srcLang.labelAr}` : `Recognizing: ${srcLang.flag} ${srcLang.label}`,
   };
 
   return (
@@ -348,9 +350,9 @@ const TranslatorView: React.FC = () => {
               className="flex items-center gap-2 px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest transition-all"
               style={{
                 background: mode === m ? 'rgba(6,182,212,0.15)' : 'transparent',
-                color:      mode === m ? '#22d3ee' : '#475569',
-                border:     mode === m ? '1px solid rgba(6,182,212,0.35)' : '1px solid transparent',
-                boxShadow:  mode === m ? '0 0 20px rgba(6,182,212,0.15)' : 'none',
+                color: mode === m ? '#22d3ee' : '#475569',
+                border: mode === m ? '1px solid rgba(6,182,212,0.35)' : '1px solid transparent',
+                boxShadow: mode === m ? '0 0 20px rgba(6,182,212,0.15)' : 'none',
               }}>
               <Icon className="w-3.5 h-3.5" />
               {label}
@@ -380,9 +382,9 @@ const TranslatorView: React.FC = () => {
                     <div className="absolute rounded-full animate-ping"
                       style={{ width: 180, height: 180, background: 'radial-gradient(circle,rgba(6,182,212,0.15),transparent)', animationDuration: '1.5s' }} />
                   )}
-                  {[100,130,160].map((s,i) => isListening && (
+                  {[100, 130, 160].map((s, i) => isListening && (
                     <div key={i} className="absolute rounded-full border border-cyan-400/20 animate-ping"
-                      style={{ width: s, height: s, animationDuration: `${1.2+i*0.4}s`, animationDelay: `${i*0.2}s` }} />
+                      style={{ width: s, height: s, animationDuration: `${1.2 + i * 0.4}s`, animationDelay: `${i * 0.2}s` }} />
                   ))}
 
                   <button
@@ -402,8 +404,8 @@ const TranslatorView: React.FC = () => {
                     {isTranslating
                       ? <RefreshCw className="w-9 h-9 text-indigo-400 animate-spin" />
                       : isListening
-                      ? <MicOff className="w-9 h-9 text-white" />
-                      : <Mic className="w-9 h-9 text-cyan-400" />
+                        ? <MicOff className="w-9 h-9 text-white" />
+                        : <Mic className="w-9 h-9 text-cyan-400" />
                     }
                   </button>
                 </div>
@@ -468,9 +470,9 @@ const TranslatorView: React.FC = () => {
           {/* OUTPUT PANEL */}
           <div className="relative rounded-[1.75rem] border overflow-hidden flex flex-col transition-all duration-500"
             style={{
-              background:   translated ? 'rgba(6,182,212,0.04)' : 'rgba(5,5,7,0.6)',
-              borderColor:  translated ? 'rgba(6,182,212,0.2)'  : 'rgba(255,255,255,0.06)',
-              boxShadow:    translated ? '0 0 60px rgba(6,182,212,0.08)' : 'none',
+              background: translated ? 'rgba(6,182,212,0.04)' : 'rgba(5,5,7,0.6)',
+              borderColor: translated ? 'rgba(6,182,212,0.2)' : 'rgba(255,255,255,0.06)',
+              boxShadow: translated ? '0 0 60px rgba(6,182,212,0.08)' : 'none',
               backdropFilter: 'blur(20px)',
               minHeight: 320,
             }}>
