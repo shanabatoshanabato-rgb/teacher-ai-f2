@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Gamepad2, Users, Plus, Play, Sparkles, Trophy,
   CheckCircle2, XCircle, Clock, Share2, LogOut, ArrowRight, RefreshCw, Crown,
-  Loader2
+  Loader
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
 import { getDatabase, ref, set, get, update, onValue, remove, push, onDisconnect } from 'firebase/database';
@@ -700,7 +700,7 @@ Return only the JSON array.`;
         </>
       ) : !gameState ? (
         <div className="flex flex-col items-center gap-6 animate-pulse">
-          <Loader2 className="w-12 h-12 text-indigo-400 animate-spin" />
+          <Loader className="w-12 h-12 text-indigo-400 animate-spin" />
           <p className="font-black text-slate-400 uppercase tracking-widest">{tx('يتم الآن مزامنة بيانات الغرفة...', 'Syncing room data...')}</p>
         </div>
       ) : (
@@ -785,7 +785,7 @@ Return only the JSON array.`;
                   </div>
 
                   <div className="space-y-4">
-                    <Loader2 className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
+                    <Loader className="w-10 h-10 text-indigo-400 mx-auto animate-spin" />
                     <p className="text-xl font-black text-white uppercase tracking-widest">{tx('بانتظار المعلم لبدء اللعبة...', 'Waiting for host to start...')}</p>
                   </div>
                 </div>
