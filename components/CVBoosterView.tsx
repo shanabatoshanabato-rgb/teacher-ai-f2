@@ -114,10 +114,24 @@ Rewrite this CV to be fully ATS-optimized.`;
         ? res.text.replace(/---ATS_ANALYSIS---[\s\S]*/, '').trim()
         : res.text.replace(/ATS_SCORE:\s*\d+/g, '').trim();
 
+      // Refine output by stripping AI chatter
+      const trimmedCV = cleanCV
+        .split('\n')
+        .filter((line, i) => {
+          if (i > 3) return true; // Keep everything after the first 3 lines
+          return !/^(To |Here'?s|The following|Below|This |Note:|I have)/i.test(line.trim());
+        })
+        .join('\n')
+        .trim();
+
+      const finalCV = trimmedCV
+        .replace(/\n---\n[\s\S]*?(This version|This revised|The above|Note that)[\s\S]*$/i, '')
+        .trim();
+
       setCurrentStep(3);
       setAtsScore(score);
       setAtsAnalysis(analysisText || '');
-      setBoostedCV(cleanCV);
+      setBoostedCV(finalCV);
       setTimeout(() => setPhase('result'), 500);
 
     } catch (err) {
