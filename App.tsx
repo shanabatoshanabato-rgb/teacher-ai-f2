@@ -11,7 +11,6 @@ import IslamicHubView from './components/IslamicHubView';
 import SettingsView from './components/SettingsView';
 import FilesView from './components/FilesView';
 import TranslatorView from './components/TranslatorView';
-import TeacherGamesView from './components/TeacherGamesView';
 import ThreeCanvas from './components/ThreeCanvas';
 import { AppTab } from './types';
 
@@ -99,7 +98,6 @@ const App: React.FC = () => {
       case 'settings':       return <SettingsView />;
       case 'files':          return <FilesView />;
       case 'translator':     return <TranslatorView />;
-      case 'teacher_games':  return <TeacherGamesView />;
       default:               return <HomeView setActiveTab={setActiveTab} />;
     }
   };
