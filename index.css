@@ -1,6 +1,11 @@
-/* Teacher AI Platform CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom globals */
 body {
   margin: 0;
   padding: 0;
-  background-color: #050505;
+  background-color: #050507;
+  color: #f1f5f9;
 }
