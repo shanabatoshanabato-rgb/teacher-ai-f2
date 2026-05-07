@@ -233,6 +233,8 @@ interface GameState {
   hostId: string;
   questions: Array<{ question: string; options: string[]; answer: string }>;
   players?: Record<string, GamePlayer>;
+  gameTime?: number;
+  lessonName?: string;
 }
 
 const TeacherGamesView: React.FC = () => {
@@ -245,6 +247,7 @@ const TeacherGamesView: React.FC = () => {
 
   // Host Setup
   const [lessonName, setLessonName] = useState('');
+  const [gameTime, setGameTime] = useState(20);
   const [isGenerating, setIsGenerating] = useState(false);
   const [questions, setQuestions] = useState<GameState['questions']>([]);
 
@@ -254,6 +257,7 @@ const TeacherGamesView: React.FC = () => {
   const [error, setError] = useState('');
   const [hasJoined, setHasJoined] = useState(false);
 
+  const [viewReport, setViewReport] = useState(false);
   const playerId = useRef(crypto.randomUUID());
   const [scorePopup, setScorePopup] = useState<{ points: number; show: boolean }>({ points: 0, show: false });
   const [timeLeft, setTimeLeft] = useState(20);
@@ -274,7 +278,8 @@ const TeacherGamesView: React.FC = () => {
     if ((mode === 'host_question' || mode === 'join_question' || gameState?.status === 'question') && gameState?.questionStartTime) {
       const updateTimer = () => {
         const elapsed = (Date.now() - gameState.questionStartTime) / 1000;
-        const remaining = Math.max(0, 20 - elapsed);
+        const timeLimit = gameState?.gameTime || 20;
+        const remaining = Math.max(0, timeLimit - elapsed);
         setTimeLeft(remaining);
         if (remaining <= 0 && timerInterval.current) {
           clearInterval(timerInterval.current);
@@ -401,6 +406,8 @@ Return only the JSON array.`;
       questionStartTime: 0,
       hostId: playerId.current,
       questions: gameQuestions,
+      gameTime: gameTime,
+      lessonName: lessonName
     };
     try {
       await set(ref(db, `games/${id}`), newGame);
@@ -490,7 +497,7 @@ Return only the JSON array.`;
       const elapsed = (Date.now() - questionStartTime) / 1000;
       const maxPoints = 1000;
       const minPoints = 100;
-      const timeLimit = 20;
+      const timeLimit = gameState?.gameTime || 20;
       if (elapsed >= timeLimit) return minPoints;
       return Math.round(maxPoints - ((maxPoints - minPoints) / timeLimit) * elapsed);
     };
@@ -617,31 +624,50 @@ Return only the JSON array.`;
                 <h2 className="text-2xl font-black text-white uppercase">{tx('تجهيز اللعبة الممتعة', 'Setup Fun Game')}</h2>
               </div>
 
-              <div className="space-y-10">
-                <div className="space-y-4">
-                  <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{tx('اسم الدرس / الموضوع', 'LESSON NAME / TOPIC')}</label>
-                  <input
-                    type="text"
-                    value={lessonName}
-                    onChange={(e) => setLessonName(e.target.value)}
-                    placeholder={tx('مثال: الكواكب، الحرب العالمية الثانية...', 'e.g. Planets, WW2...')}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-bold"
-                  />
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-emerald-400 uppercase tracking-widest px-2">{tx('اسم الدرس / المادة التعليمية', 'LESSON / SUBJECT TOPIC')}</label>
+                    <input
+                      type="text"
+                      value={lessonName}
+                      onChange={(e) => setLessonName(e.target.value)}
+                      placeholder={tx('مثال: الجهاز الهضمي، الحرب العالمية، النحو...', 'e.g. Digestive System, History, Grammar...')}
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-5 text-white focus:outline-none focus:border-emerald-500/50 transition-all font-bold text-lg"
+                    />
+                  </div>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest px-2">{tx('وقت الإجابة لكل سؤال (ثانية)', 'TIME PER QUESTION (SECONDS)')}</label>
+                    <div className="flex items-center gap-4">
+                       <input
+                        type="range"
+                        min="5"
+                        max="60"
+                        step="5"
+                        value={gameTime}
+                        onChange={(e) => setGameTime(parseInt(e.target.value))}
+                        className="flex-1 accent-indigo-500"
+                      />
+                      <span className="w-16 py-2 bg-indigo-600/20 border border-indigo-500/30 rounded-xl text-indigo-400 font-black text-center">{gameTime}s</span>
+                    </div>
+                  </div>
+
+                  <div className="pt-4">
+                    <button
+                      onClick={generateAIQuiz}
+                      disabled={isGenerating || !lessonName}
+                      className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 text-white font-black py-6 rounded-3xl shadow-xl shadow-emerald-900/40 active:scale-95 transition-all text-xs tracking-widest flex items-center justify-center gap-4 uppercase"
+                    >
+                      {isGenerating ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+                      {isGenerating ? tx('جاري توليد الأسئلة ذكياً...', 'AI GENERATING QUESTIONS...') : tx('بدء اللعبة الآن', 'START GAME NOW')}
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex gap-4">
-                  <button
-                    onClick={generateAIQuiz}
-                    disabled={isGenerating || !lessonName}
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white py-5 rounded-3xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-3 shadow-xl shadow-emerald-900/20"
-                  >
-                    {isGenerating ? <RefreshCw className="animate-spin" /> : <Sparkles />}
-                    {isGenerating ? tx('جاري التوليد...', 'Generating...') : tx('توليد بالذكاء الاصطناعي', 'AI Generate')}
-                  </button>
+                <div className="pt-4">
+                  <button onClick={resetToHome} className="w-full text-slate-600 hover:text-slate-400 font-black uppercase text-[10px] tracking-[0.3em] py-2 transition-colors">{tx('العودة للقائمة', 'BACK TO MENU')}</button>
                 </div>
 
-                <button onClick={resetToHome} className="w-full text-slate-500 hover:text-white font-bold uppercase text-[10px] tracking-widest py-2 transition-colors">{tx('العودة', 'Back')}</button>
-              </div>
             </div>
           )}
 
@@ -830,7 +856,7 @@ Return only the JSON array.`;
                 </div>
 
                 <h3 className="text-2xl md:text-3xl font-black text-white leading-tight uppercase pt-4 transition-all">
-                  {currentQ?.question || tx('جاري تحميل السؤال...', 'Loading question...')}
+                  {currentQ?.question || (currentQ as any)?.text || (currentQ as any)?.q || tx('جاري تحميل السؤال...', 'Loading question...')}
                 </h3>
 
                 {/* Progress Bar/Timer Detail */}
@@ -1011,7 +1037,7 @@ Return only the JSON array.`;
               </div>
 
               {/* Final Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-10">
+              <div className="flex flex-col sm:flex-row gap-4 pt-10 w-full">
                 {mode.startsWith('host_') ? (
                   <button
                     onClick={endGame}
@@ -1021,15 +1047,94 @@ Return only the JSON array.`;
                     {tx('إنهاء اللعبة للجميع', 'End Game for All')}
                   </button>
                 ) : (
-                  <button
-                    onClick={resetToHome}
-                    className="flex-1 bg-white/5 border border-white/10 hover:border-white/20 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl"
-                  >
-                    <LogOut />
-                    {tx('خروج للرئيسية', 'Back to Home')}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setViewReport(true)}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-emerald-900/20"
+                    >
+                      <Trophy />
+                      {tx('عرض تقريري المفصل', 'View My Report')}
+                    </button>
+                    <button
+                      onClick={resetToHome}
+                      className="flex-1 bg-white/5 border border-white/10 hover:border-white/20 text-white py-6 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl"
+                    >
+                      <LogOut />
+                      {tx('خروج', 'Exit')}
+                    </button>
+                  </>
                 )}
               </div>
+
+              {/* Enhanced Analytics Report Modal */}
+              {viewReport && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                  <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl" onClick={() => setViewReport(false)} />
+                  <div className="relative w-full max-w-lg bg-[#0a0a0c] border border-white/10 rounded-[3rem] p-8 md:p-12 space-y-10 shadow-2xl animate-in zoom-in-95 duration-400">
+                    <div className="text-center space-y-3">
+                       <div className="w-20 h-20 bg-emerald-500/10 rounded-3xl border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
+                         <Trophy className="w-10 h-10 text-emerald-400" />
+                       </div>
+                       <h2 className="text-3xl font-black text-white uppercase tracking-tighter leading-tight">{tx('تقرير الذكاء الدراسي', 'Your Intelligence Report')}</h2>
+                       <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-[10px]">{tx('تحليل شامل لأدائك في المسابقة', 'In-depth analysis of your quiz performance')}</p>
+                    </div>
+
+                    {(() => {
+                      const player = gameState?.players?.[playerId.current];
+                      const totalQs = gameState?.questions?.length || 0;
+                      const answers = player?.answers || {};
+                      const correctCount = Object.values(answers).filter((a: any) => a.correct).length;
+                      const wrongCount = totalQs - correctCount;
+                      const percentage = totalQs > 0 ? Math.round((correctCount / totalQs) * 100) : 0;
+
+                      return (
+                        <div className="space-y-8">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-3xl text-center">
+                               <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">{tx('إجابات صحيحة', 'CORRECT')}</p>
+                               <p className="text-4xl font-black text-white">{correctCount}</p>
+                            </div>
+                            <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-3xl text-center">
+                               <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">{tx('إجابات خاطئة', 'WRONG')}</p>
+                               <p className="text-4xl font-black text-white">{wrongCount}</p>
+                            </div>
+                          </div>
+
+                          <div className="bg-white/5 border border-white/10 p-8 rounded-3xl flex flex-col items-center gap-4 relative overflow-hidden group">
+                             <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/5 blur-[50px] -z-10" />
+                             <div className="relative w-40 h-40 flex items-center justify-center">
+                                <svg className="w-full h-full transform -rotate-90">
+                                  <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="10" fill="transparent" className="text-white/5" />
+                                  <circle 
+                                    cx="80" cy="80" r="70" 
+                                    stroke="currentColor" strokeWidth="10" 
+                                    fill="transparent" 
+                                    strokeDasharray="439.8" 
+                                    strokeDashoffset={439.8 - (percentage / 100) * 439.8} 
+                                    className="text-indigo-500 transition-all duration-1000 ease-out" 
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                  <span className="text-4xl font-black text-white">{percentage}%</span>
+                                  <span className="text-[8px] font-black text-slate-500 uppercase">{tx('النسبة', 'ACCURACY')}</span>
+                                </div>
+                             </div>
+                          </div>
+
+                          <button 
+                            onClick={() => setViewReport(false)}
+                            className="w-full py-6 bg-white text-black font-black rounded-2xl text-xs uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 shadow-xl"
+                          >
+                            {tx('فهمت، إغلاق التقرير', 'Got it, Close Report')}
+                          </button>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
             </div>
           )}
         </>
