@@ -39,6 +39,7 @@ interface Participant {
   isMuted?: boolean;
   isVideoOff?: boolean;
   isSharing?: boolean;
+  screenStreamId?: string | null;
 }
 
 const StudyRoomView: React.FC = () => {
@@ -66,6 +67,11 @@ const StudyRoomView: React.FC = () => {
   const roomRef = useRef<any>(null);
   const [remoteScreenStreams, setRemoteScreenStreams] = useState<Record<string, MediaStream>>({});
   const streamsRef = useRef<Record<string, MediaStream>>({});
+
+  const participantsRef = useRef<Participant[]>([]);
+  useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
 
   const tx = (ar: string, en: string) => isAr ? ar : en;
 
@@ -282,9 +288,11 @@ const StudyRoomView: React.FC = () => {
     pc.ontrack = (event) => {
       const stream = event.streams[0];
       if (event.track.kind === 'video') {
-        const p = participants.find(part => part.id === otherId);
-        // Identify screen share by its unique stream ID shared via Firestore
-        const isScreen = stream.id === p?.screenStreamId || stream.id.includes('screen') || event.streams.length > 1;
+        const p = participantsRef.current.find(part => part.id === otherId);
+        // Robust detection: check Firestore metadata, stream ID tagging, or multi-stream presence
+        const isScreen = (p?.screenStreamId && stream.id === p.screenStreamId) || 
+                         stream.id.includes('screen') || 
+                         event.streams.length > 1;
         
         if (isScreen) {
           setRemoteScreenStreams(prev => ({ ...prev, [otherId]: stream }));
