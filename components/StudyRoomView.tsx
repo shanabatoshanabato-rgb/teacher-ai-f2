@@ -574,10 +574,14 @@ const StudyRoomView: React.FC = () => {
                   <RemoteVideo
                     stream={p.id === userId ? screenStreamRef.current! : remoteScreenStreams[p.id]}
                     isVideoOff={false}
+                    muted={true}
                     className="w-full h-full object-contain"
                   />
-                  <div className="absolute top-4 left-4 bg-emerald-600/80 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white animate-pulse border border-white/10">
-                    {p.name} {tx('يشارك الشاشة الآن', 'is sharing screen')}
+                  <div className="absolute top-4 left-4 flex items-center gap-3 bg-emerald-600/80 backdrop-blur-md px-4 py-1.5 rounded-full border border-white/10">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white">
+                      {p.name} {tx('يشارك الشاشة الآن', 'is sharing screen')}
+                    </span>
+                    {p.id !== userId && <VoiceIndicator stream={remoteStreams[p.id]} />}
                   </div>
                 </div>
               ))}
@@ -593,9 +597,10 @@ const StudyRoomView: React.FC = () => {
               </div>
               {participants.filter(p => p.id !== userId && !p.isSharing).map(p => (
                 <div key={p.id} className="min-w-[120px] md:min-w-[160px] h-full bg-[#111114] rounded-2xl border border-white/5 overflow-hidden relative snap-start">
-                  <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
-                  <div className="absolute bottom-2 left-2 right-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg text-[8px] font-black text-white uppercase truncate">
-                    {p.name}
+                  <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} muted={false} className="w-full h-full object-cover" />
+                  <div className="absolute bottom-2 left-2 right-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center justify-between gap-2 overflow-hidden">
+                    <span className="text-[8px] font-black text-white uppercase truncate">{p.name}</span>
+                    <VoiceIndicator stream={remoteStreams[p.id]} />
                   </div>
                 </div>
               ))}
@@ -627,10 +632,11 @@ const StudyRoomView: React.FC = () => {
 
             {participants.filter(p => p.id !== userId).map(p => (
               <div key={p.id} className="relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group">
-                <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
+                <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} muted={false} className="w-full h-full object-cover" />
                 <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between z-10">
-                  <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 border border-white/5">
+                  <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-3 border border-white/5">
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">{p.name}</span>
+                    <VoiceIndicator stream={remoteStreams[p.id]} />
                     {p.isMuted && <MicOff className="w-3 h-3 text-red-500" />}
                   </div>
                   {isHost && (
@@ -674,7 +680,7 @@ const StudyRoomView: React.FC = () => {
   );
 };
 
-const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; className?: string }> = ({ stream, isVideoOff, className = '' }) => {
+const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; muted?: boolean; className?: string }> = ({ stream, isVideoOff, muted = true, className = '' }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -693,7 +699,7 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; classN
 
   return (
     <>
-      <video ref={videoRef} autoPlay playsInline muted className={`${className} ${isVideoOff ? 'hidden' : ''}`} />
+      <video ref={videoRef} autoPlay playsInline muted={muted} className={`${className} ${isVideoOff ? 'hidden' : ''}`} />
       {isVideoOff && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/10 to-black">
           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 opacity-50">
@@ -702,6 +708,60 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; classN
         </div>
       )}
     </>
+  );
+};
+
+const VoiceIndicator: React.FC<{ stream?: MediaStream }> = ({ stream }) => {
+  const [level, setLevel] = useState(0);
+
+  useEffect(() => {
+    if (!stream || !stream.getAudioTracks().length) {
+      setLevel(0);
+      return;
+    }
+    
+    let audioContext: AudioContext;
+    try {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      let animationFrame: number;
+      const updateLevel = () => {
+        analyser.getByteFrequencyData(dataArray);
+        const sum = dataArray.reduce((a, b) => a + b, 0);
+        const average = sum / bufferLength;
+        setLevel(average);
+        animationFrame = requestAnimationFrame(updateLevel);
+      };
+      updateLevel();
+
+      return () => {
+        cancelAnimationFrame(animationFrame);
+        audioContext.close();
+      };
+    } catch (e) {
+      console.error("Audio indicator failed", e);
+    }
+  }, [stream]);
+
+  if (level < 10) return null;
+
+  return (
+    <div className="flex gap-0.5 items-end h-2.5 px-0.5">
+      {[1, 2, 3].map(i => (
+        <div 
+          key={i} 
+          className="w-0.5 bg-cyan-400 rounded-full transition-all duration-75"
+          style={{ height: `${Math.min(100, (level / 100) * 100 * (i === 2 ? 1.5 : 1))}%` }}
+        />
+      ))}
+    </div>
   );
 };
 
