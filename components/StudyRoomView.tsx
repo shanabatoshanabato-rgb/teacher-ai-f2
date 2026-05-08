@@ -81,6 +81,21 @@ const StudyRoomView: React.FC = () => {
     };
   }, []);
 
+  // Auto-join if URL params are present
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const name = params.get('name');
+    const host = params.get('host') === 'true';
+
+    if (code && name) {
+      setUserName(name);
+      setRoomCode(code);
+      setIsHost(host);
+      startRoom(code, host);
+    }
+  }, []);
+
   // Sync local video when layout changes
   useEffect(() => {
     if (localVideoRef.current && localStreamRef.current) {
@@ -124,9 +139,8 @@ const StudyRoomView: React.FC = () => {
       createdAt: Date.now()
     });
 
-    setRoomCode(code);
-    setIsHost(true);
-    await startRoom(code, true);
+    setIsLoading(false);
+    window.open(`${window.location.origin}${window.location.pathname}?code=${code}&name=${userName}&host=true`, '_blank');
   };
 
   const joinRoom = async () => {
@@ -142,9 +156,8 @@ const StudyRoomView: React.FC = () => {
       return alert(tx('الغرفة غير موجودة أو انتهت', 'Room not found or ended'));
     }
 
-    setRoomCode(code);
-    setIsHost(false);
-    await startRoom(code, false);
+    setIsLoading(false);
+    window.open(`${window.location.origin}${window.location.pathname}?code=${code}&name=${userName}&host=false`, '_blank');
   };
 
   const startRoom = async (code: string, host: boolean) => {
@@ -368,12 +381,12 @@ const StudyRoomView: React.FC = () => {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const screenTrack = screenStream.getVideoTracks()[0];
-      
+
       Object.values(pcsRef.current).forEach(pc => {
         const sender = pc.getSenders().find(s => s.track?.kind === 'video');
         sender?.replaceTrack(screenTrack);
       });
-      
+
       if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
       screenStreamRef.current = screenStream;
       screenTrack.onended = stopScreenShare;
@@ -552,7 +565,7 @@ const StudyRoomView: React.FC = () => {
               {participants.map(p => p.isSharing && (
                 <div key={p.id} className="w-full h-full">
                   <RemoteVideo
-                    stream={p.id === userId ? screenStreamRef.current! : remoteScreenStreams[p.id]}
+                    stream={p.id === userId ? screenStreamRef.current! : remoteStreams[p.id]}
                     isVideoOff={false}
                     className="w-full h-full object-contain"
                   />

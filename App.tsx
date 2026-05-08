@@ -86,6 +86,13 @@ const VoiceFAB: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 // ── App ────────────────────────────────────────────────────────
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('home');
+  const isStandalone = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('code');
+
+  useEffect(() => {
+    if (isStandalone) {
+      setActiveTab('study_room');
+    }
+  }, [isStandalone]);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -110,20 +117,20 @@ const App: React.FC = () => {
   return (
     <div className="h-[100dvh] flex flex-col bg-[#050505] overflow-hidden">
       {/* 3D Canvas Background — only on non-chat pages for performance */}
-      {activeTab !== 'chat' && <ThreeCanvas />}
+      {activeTab !== 'chat' && !isStandalone && <ThreeCanvas />}
 
-      <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+      {!isStandalone && <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />}
 
       <main
         className={`flex-1 relative flex flex-col overflow-hidden ${
-          isChat
+          isChat || isStandalone
             ? 'mt-[60px] md:mt-[68px]'
             : 'mt-[72px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10'
         }`}
       >
         <div
           className={`flex-1 flex flex-col ${
-            isChat
+            isChat || isStandalone
               ? 'w-full h-full'
               : 'max-w-[1920px] mx-auto w-full px-4 md:px-10 pb-20 md:pb-10'
           }`}
