@@ -154,7 +154,7 @@ Rules:
       setLastAiText(responseText);
       setPhase('synthesizing');
       setIsAiSpeaking(true);
-      await puterVoice(responseText, selectedVoice);
+      await puterVoice(responseText, sessionLang, selectedVoice);
 
     } catch (e) {
       console.error('Voice Flow Error:', e);

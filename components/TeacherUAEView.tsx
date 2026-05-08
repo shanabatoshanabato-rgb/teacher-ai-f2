@@ -155,7 +155,7 @@ const TeacherUAEView: React.FC = () => {
       setPhase('active');
       setSessionActive(true);
       setIsAiSpeaking(true);
-      await puterVoice(res.text);
+      await puterVoice(res.text, sessionLang);
       setIsAiSpeaking(false);
       setLessonDone(true); // ← user must manually start quiz when ready
     } catch {
@@ -186,7 +186,7 @@ const TeacherUAEView: React.FC = () => {
       setAiResponse(res.text);
       setHistory([...history, { role: 'user', content: userSpeech }, { role: 'assistant', content: res.text }]);
       setIsAiSpeaking(true);
-      await puterVoice(res.text);
+      await puterVoice(res.text, sessionLang);
       setIsAiSpeaking(false);
       if (res.text.includes('؟') || res.text.includes('أ)')) setInteractionState('quiz_mode');
     } catch (e) {
@@ -271,7 +271,7 @@ Lesson content: ${lessonContent}`;
           setHistory(prev => [...prev, { role: 'assistant', content: res.text }]);
           setPhase('active');
           setIsAiSpeaking(true);
-          await puterVoice(res.text);
+          await puterVoice(res.text, sessionLang);
           setIsAiSpeaking(false);
           setLessonDone(true);
         } finally { setQuizLoading(false); }
@@ -291,7 +291,7 @@ Lesson content: ${lessonContent}`;
           setHistory(prev => [...prev, { role: 'assistant', content: res.text }]);
           setPhase('active');
           setIsAiSpeaking(true);
-          await puterVoice(res.text);
+          await puterVoice(res.text, sessionLang);
           setIsAiSpeaking(false);
           setLessonDone(true);
         } finally { setQuizLoading(false); }

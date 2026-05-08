@@ -171,7 +171,7 @@ export function stopPuterVoice() {
     }
 }
 
-export async function puterVoice(text: string, voiceName: string = 'alloy') {
+export async function puterVoice(text: string, lang: 'ar' | 'en' = 'ar', voiceName: string = 'alloy') {
     try {
         stopPuterVoice();
 
@@ -183,7 +183,9 @@ export async function puterVoice(text: string, voiceName: string = 'alloy') {
             model: 'gpt-4o-mini-tts',
             voice: voiceName,
             response_format: 'mp3',
-            instructions: 'تحدث بلغة عربية فصحى، واضحة، وهادئة بأسلوب تعليمي.',
+            instructions: lang === 'ar' 
+                ? 'تحدث بلغة عربية فصحى، واضحة، وهادئة بأسلوب تعليمي.' 
+                : 'Speak in a clear, professional, and educational English voice.',
         });
 
         currentAudioElement = audio;
