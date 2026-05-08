@@ -214,9 +214,11 @@ export async function puterTextLogic(mode: string, input: string, responseLang: 
     return res.text;
 }
 
-export async function puterWebDiscovery(query: string): Promise<PuterResponse> {
-    const systemPrompt = "أنت باحث ذكي. استخدم أداة البحث بشكل إلزامي للوصول للمعلومات الحية ثم لخصها بوضوح.";
-    return runPuterAgent(query, undefined, undefined, 'ar', true, systemPrompt);
+export async function puterWebDiscovery(query: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> {
+    const systemPrompt = lang === 'ar'
+        ? "أنت باحث ذكي. استخدم أداة البحث بشكل إلزامي للوصول للمعلومات الحية ثم لخصها بوضوح."
+        : "You are an intelligent researcher. Use the search tool to find live information and summarize it clearly in English.";
+    return runPuterAgent(query, undefined, undefined, lang, true, systemPrompt);
 }
 
 export async function puterVisualGen(prompt: string, style: string): Promise<string | null> {

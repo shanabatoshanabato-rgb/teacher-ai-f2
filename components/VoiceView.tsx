@@ -116,7 +116,7 @@ const VoiceView: React.FC = () => {
         const query = text
           .replace(/ابحث عن|ابحث|بحث عن|search for|search|find|look up/gi, '')
           .trim() || text;
-        const res = await puterWebDiscovery(query);
+        const res = await puterWebDiscovery(query, sessionLang);
         responseText = res.text;
       } else {
         // Memory-aware chat path
