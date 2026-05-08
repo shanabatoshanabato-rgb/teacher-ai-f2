@@ -282,15 +282,16 @@ const StudyRoomView: React.FC = () => {
     pc.ontrack = (event) => {
       const stream = event.streams[0];
       // Detect if this is a screen stream based on some property or just stream count
-      // For now, we'll use stream.id to distinguish or just check track kind
+      // Screen streams usually have a different ID or are the second stream Added
       if (event.track.kind === 'video') {
-        if (stream.id.includes('screen') || event.streams.length > 1 || stream.getVideoTracks().length > 1) {
+        const p = participants.find(part => part.id === otherId);
+        const isScreen = stream.id.includes('screen') || event.streams.length > 1 || stream.getVideoTracks().length > 1 || p?.isSharing;
+        if (isScreen) {
           setRemoteScreenStreams(prev => ({ ...prev, [otherId]: stream }));
         } else {
           setRemoteStreams(prev => ({ ...prev, [otherId]: stream }));
         }
       } else {
-        // Audio
         setRemoteStreams(prev => ({ ...prev, [otherId]: stream }));
       }
     };
@@ -381,13 +382,17 @@ const StudyRoomView: React.FC = () => {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const screenTrack = screenStream.getVideoTracks()[0];
-
+      
+      // Add track to all PCs
       Object.values(pcsRef.current).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-        sender?.replaceTrack(screenTrack);
+        pc.addTrack(screenTrack, screenStream);
       });
 
-      // Stay on face cam local preview - NO change to localVideoRef srcObject
+      // Trigger renegotiation for all
+      participants.forEach(p => {
+        if (p.id !== userId) initiateCall(p.id);
+      });
+
       screenStreamRef.current = screenStream;
       screenTrack.onended = stopScreenShare;
       setIsSharing(true);
@@ -398,16 +403,23 @@ const StudyRoomView: React.FC = () => {
   };
 
   const stopScreenShare = () => {
-    const camTrack = localStreamRef.current?.getVideoTracks()[0];
-    if (camTrack) {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      
+      // Remove track from PCs and renegotiate
       Object.values(pcsRef.current).forEach(pc => {
-        const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-        sender?.replaceTrack(camTrack);
+        const senders = pc.getSenders();
+        const screenTrackId = screenStreamRef.current?.getVideoTracks()[0]?.id;
+        const screenSender = senders.find(s => s.track?.id === screenTrackId);
+        if (screenSender) pc.removeTrack(screenSender);
       });
+
+      participants.forEach(p => {
+        if (p.id !== userId) initiateCall(p.id);
+      });
+
+      screenStreamRef.current = null;
     }
-    // No need to revert localVideoRef - it was never changed
-    screenStreamRef.current?.getTracks().forEach(t => t.stop());
-    screenStreamRef.current = null;
     setIsSharing(false);
     if (roomRef.current) updateDoc(doc(roomRef.current, 'participants', userId), { isSharing: false });
   };
@@ -565,7 +577,7 @@ const StudyRoomView: React.FC = () => {
               {participants.map(p => p.isSharing && (
                 <div key={p.id} className="w-full h-full bg-black flex items-center justify-center">
                   <RemoteVideo
-                    stream={p.id === userId ? screenStreamRef.current! : (p.isSharing ? remoteStreams[p.id] : null)}
+                    stream={p.id === userId ? screenStreamRef.current! : remoteScreenStreams[p.id]}
                     isVideoOff={false}
                     className="w-full h-full object-contain"
                   />
@@ -657,21 +669,21 @@ const StudyRoomView: React.FC = () => {
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] w-max max-w-[95vw] pointer-events-auto select-none isolate">
         <div className="bg-[#0f0f12]/95 backdrop-blur-3xl px-4 md:px-8 py-3 md:py-4 rounded-[2rem] md:rounded-[2.5rem] border border-white/20 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex items-center gap-3 md:gap-6 pointer-events-auto">
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleMic(); }}
+            onClick={() => toggleMic()}
             className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isMuted ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isMuted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
 
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); toggleCamera(); }}
+            onClick={() => toggleCamera()}
             className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isVideoOff ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isVideoOff ? <VideoOff className="w-5 h-5 md:w-6 md:h-6" /> : <Camera className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
 
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); shareScreen(); }}
+            onClick={() => shareScreen()}
             className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isSharing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
           >
             {isSharing ? <ScreenShare className="w-5 h-5 md:w-6 md:h-6" /> : <Monitor className="w-5 h-5 md:w-6 md:h-6" />}
@@ -679,7 +691,7 @@ const StudyRoomView: React.FC = () => {
 
           {isHost && (
             <button
-              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); muteAll(); }}
+              onClick={() => muteAll()}
               className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-white/5 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all cursor-pointer active:scale-95 pointer-events-auto"
               title={tx('كتم صوت الجميع', 'Mute All')}
             >
@@ -690,7 +702,7 @@ const StudyRoomView: React.FC = () => {
           <div className="w-px h-8 md:h-10 bg-white/10 mx-1 md:mx-2" />
 
           <button
-            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); leaveRoom(); }}
+            onClick={() => leaveRoom()}
             className="p-4 md:p-5 bg-red-600 hover:bg-red-500 text-white rounded-xl md:rounded-2xl transition-all shadow-lg shadow-red-600/20 cursor-pointer active:scale-95 pointer-events-auto"
           >
             <LogOut className="w-5 h-5 md:w-6 md:h-6" />
