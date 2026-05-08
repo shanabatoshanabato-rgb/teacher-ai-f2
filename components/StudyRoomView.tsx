@@ -281,11 +281,11 @@ const StudyRoomView: React.FC = () => {
 
     pc.ontrack = (event) => {
       const stream = event.streams[0];
-      // Detect if this is a screen stream based on some property or just stream count
-      // Screen streams usually have a different ID or are the second stream Added
       if (event.track.kind === 'video') {
         const p = participants.find(part => part.id === otherId);
-        const isScreen = stream.id.includes('screen') || event.streams.length > 1 || stream.getVideoTracks().length > 1 || p?.isSharing;
+        // Identify screen share by its unique stream ID shared via Firestore
+        const isScreen = stream.id === p?.screenStreamId || stream.id.includes('screen') || event.streams.length > 1;
+        
         if (isScreen) {
           setRemoteScreenStreams(prev => ({ ...prev, [otherId]: stream }));
         } else {
@@ -383,6 +383,9 @@ const StudyRoomView: React.FC = () => {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const screenTrack = screenStream.getVideoTracks()[0];
       
+      // Tag the stream for easier identification
+      Object.defineProperty(screenStream, 'id', { value: `screen_${userId}_${Date.now()}`, writable: true });
+
       // Add track to all PCs
       Object.values(pcsRef.current).forEach(pc => {
         pc.addTrack(screenTrack, screenStream);
@@ -396,7 +399,10 @@ const StudyRoomView: React.FC = () => {
       screenStreamRef.current = screenStream;
       screenTrack.onended = stopScreenShare;
       setIsSharing(true);
-      updateDoc(doc(roomRef.current, 'participants', userId), { isSharing: true });
+      updateDoc(doc(roomRef.current, 'participants', userId), { 
+        isSharing: true,
+        screenStreamId: screenStream.id 
+      });
     } catch (err) {
       console.error(err);
     }
@@ -421,7 +427,10 @@ const StudyRoomView: React.FC = () => {
       screenStreamRef.current = null;
     }
     setIsSharing(false);
-    if (roomRef.current) updateDoc(doc(roomRef.current, 'participants', userId), { isSharing: false });
+    if (roomRef.current) updateDoc(doc(roomRef.current, 'participants', userId), { 
+      isSharing: false,
+      screenStreamId: null 
+    });
   };
 
   const leaveRoom = async () => {
@@ -737,6 +746,7 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; classN
         ref={videoRef}
         autoPlay
         playsInline
+        muted
         className={`${className} ${isVideoOff ? 'hidden' : ''}`}
       />
       {isVideoOff && (
