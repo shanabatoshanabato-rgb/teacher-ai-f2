@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Video, Mic, MicOff, VideoOff, ScreenShare, LogOut,
   Copy, Check, Users, Shield, Trash2, VolumeX, Loader2, Camera, Monitor, Settings
@@ -7,7 +6,7 @@ import {
 import { initializeApp, getApps } from 'firebase/app';
 import {
   getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot,
-  collection, addDoc, deleteDoc, query, getDocs, where
+  collection, addDoc, deleteDoc
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -39,7 +38,14 @@ interface Participant {
   isMuted?: boolean;
   isVideoOff?: boolean;
   isSharing?: boolean;
-  screenStreamId?: string | null;
+  status?: string;
+  forceMute?: number;
+}
+
+// Separate connections for camera and screen share
+interface PeerConnections {
+  camera: RTCPeerConnection | null;
+  screen: RTCPeerConnection | null;
 }
 
 const StudyRoomView: React.FC = () => {
@@ -56,6 +62,7 @@ const StudyRoomView: React.FC = () => {
   const [isSharing, setIsSharing] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [remoteStreams, setRemoteStreams] = useState<Record<string, MediaStream>>({});
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Record<string, MediaStream>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -63,15 +70,9 @@ const StudyRoomView: React.FC = () => {
   const localStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
-  const pcsRef = useRef<Record<string, RTCPeerConnection>>({});
+  // Separate PC for camera and screen per user
+  const pcsRef = useRef<Record<string, PeerConnections>>({});
   const roomRef = useRef<any>(null);
-  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Record<string, MediaStream>>({});
-  const streamsRef = useRef<Record<string, MediaStream>>({});
-
-  const participantsRef = useRef<Participant[]>([]);
-  useEffect(() => {
-    participantsRef.current = participants;
-  }, [participants]);
 
   const tx = (ar: string, en: string) => isAr ? ar : en;
 
@@ -122,7 +123,6 @@ const StudyRoomView: React.FC = () => {
       return stream;
     } catch (err) {
       console.error("Error accessing media devices:", err);
-      // Fallback: try audio only if video fails
       try {
         return await navigator.mediaDevices.getUserMedia({ audio: true });
       } catch (e) {
@@ -181,7 +181,6 @@ const StudyRoomView: React.FC = () => {
     const roomDoc = doc(db, 'rooms', code);
     roomRef.current = roomDoc;
 
-    // Add self to participants
     const selfDoc = doc(collection(roomDoc, 'participants'), userId);
     await setDoc(selfDoc, {
       name: userName,
@@ -195,7 +194,6 @@ const StudyRoomView: React.FC = () => {
     setMode('room');
     setIsLoading(false);
 
-    // Listen for participants
     onSnapshot(collection(roomDoc, 'participants'), (snapshot) => {
       const parts: Participant[] = [];
       snapshot.forEach(doc => {
@@ -216,7 +214,6 @@ const StudyRoomView: React.FC = () => {
       setParticipants(parts);
     });
 
-    // Listen for room status
     onSnapshot(roomDoc, (snapshot) => {
       if (snapshot.exists() && snapshot.data().status === 'ended') {
         alert(tx('انتهت الجلسة من قبل المضيف', 'The session has been ended by the host'));
@@ -224,7 +221,6 @@ const StudyRoomView: React.FC = () => {
       }
     });
 
-    // Mesh WebRTC Logic
     setupMeshConnections(code);
   };
 
@@ -232,24 +228,37 @@ const StudyRoomView: React.FC = () => {
     const roomDoc = doc(db, 'rooms', code);
     const participantsCol = collection(roomDoc, 'participants');
 
-    // Each participant listens for others joining
     onSnapshot(participantsCol, (snapshot) => {
       snapshot.docChanges().forEach(async (change) => {
         const otherUserId = change.doc.id;
         if (otherUserId === userId) return;
 
         if (change.type === 'added') {
-          // Rule: If I joined AFTER them, I initiate the connection
-          // We'll use joinedAt timestamp for consistency
+          // Mesh initiation logic
           if (userId > otherUserId) {
-            initiateCall(otherUserId);
+            initiateConnection(otherUserId, 'camera');
           }
+        }
+        if (change.type === 'removed') {
+          if (pcsRef.current[otherUserId]) {
+            pcsRef.current[otherUserId].camera?.close();
+            pcsRef.current[otherUserId].screen?.close();
+            delete pcsRef.current[otherUserId];
+          }
+          setRemoteStreams(prev => {
+            const next = { ...prev };
+            delete next[otherUserId];
+            return next;
+          });
+          setRemoteScreenStreams(prev => {
+            const next = { ...prev };
+            delete next[otherUserId];
+            return next;
+          });
         }
       });
     });
 
-    // Listen for incoming offers/answers/candidates
-    // We'll use a 'calls' collection for P2P signaling
     const callsCol = collection(roomDoc, 'calls');
     onSnapshot(callsCol, (snapshot) => {
       snapshot.docChanges().forEach(async (change) => {
@@ -257,29 +266,34 @@ const StudyRoomView: React.FC = () => {
         if (data.to !== userId) return;
 
         const from = data.from;
+        const connType = (data.connType as 'camera' | 'screen') || 'camera';
 
         if (change.type === 'added' || change.type === 'modified') {
-          if (data.offer && !pcsRef.current[from]) {
-            handleOffer(from, data.offer);
+          if (data.offer) {
+            handleOffer(from, data.offer, connType);
           } else if (data.answer) {
-            handleAnswer(from, data.answer);
+            handleAnswer(from, data.answer, connType);
           } else if (data.candidate) {
-            handleCandidate(from, data.candidate);
+            handleCandidate(from, data.candidate, connType);
           }
         }
       });
     });
   };
 
-  const createPC = (otherId: string) => {
+  const createPC = (otherId: string, connType: 'camera' | 'screen') => {
     const pc = new RTCPeerConnection(servers);
-    pcsRef.current[otherId] = pc;
 
-    localStreamRef.current?.getTracks().forEach(track => {
-      pc.addTrack(track, localStreamRef.current!);
-    });
+    if (!pcsRef.current[otherId]) {
+      pcsRef.current[otherId] = { camera: null, screen: null };
+    }
+    pcsRef.current[otherId][connType] = pc;
 
-    if (screenStreamRef.current) {
+    if (connType === 'camera') {
+      localStreamRef.current?.getTracks().forEach(track => {
+        pc.addTrack(track, localStreamRef.current!);
+      });
+    } else if (connType === 'screen' && screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(track => {
         pc.addTrack(track, screenStreamRef.current!);
       });
@@ -287,18 +301,8 @@ const StudyRoomView: React.FC = () => {
 
     pc.ontrack = (event) => {
       const stream = event.streams[0];
-      if (event.track.kind === 'video') {
-        const p = participantsRef.current.find(part => part.id === otherId);
-        // Robust detection: check Firestore metadata, stream ID tagging, or multi-stream presence
-        const isScreen = (p?.screenStreamId && stream.id === p.screenStreamId) || 
-                         stream.id.includes('screen') || 
-                         event.streams.length > 1;
-        
-        if (isScreen) {
-          setRemoteScreenStreams(prev => ({ ...prev, [otherId]: stream }));
-        } else {
-          setRemoteStreams(prev => ({ ...prev, [otherId]: stream }));
-        }
+      if (connType === 'screen') {
+        setRemoteScreenStreams(prev => ({ ...prev, [otherId]: stream }));
       } else {
         setRemoteStreams(prev => ({ ...prev, [otherId]: stream }));
       }
@@ -306,10 +310,10 @@ const StudyRoomView: React.FC = () => {
 
     pc.onicecandidate = (event) => {
       if (event.candidate) {
-        // Send ICE candidate
         addDoc(collection(roomRef.current, 'calls'), {
           from: userId,
           to: otherId,
+          connType: connType,
           candidate: event.candidate.toJSON(),
           timestamp: Date.now()
         });
@@ -319,21 +323,22 @@ const StudyRoomView: React.FC = () => {
     return pc;
   };
 
-  const initiateCall = async (otherId: string) => {
-    const pc = createPC(otherId);
+  const initiateConnection = async (otherId: string, connType: 'camera' | 'screen') => {
+    const pc = createPC(otherId, connType);
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
     await addDoc(collection(roomRef.current, 'calls'), {
       from: userId,
       to: otherId,
+      connType: connType,
       offer: { type: offer.type, sdp: offer.sdp },
       timestamp: Date.now()
     });
   };
 
-  const handleOffer = async (fromId: string, offer: any) => {
-    const pc = createPC(fromId);
+  const handleOffer = async (fromId: string, offer: any, connType: 'camera' | 'screen') => {
+    const pc = createPC(fromId, connType);
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -341,20 +346,21 @@ const StudyRoomView: React.FC = () => {
     await addDoc(collection(roomRef.current, 'calls'), {
       from: userId,
       to: fromId,
+      connType: connType,
       answer: { type: answer.type, sdp: answer.sdp },
       timestamp: Date.now()
     });
   };
 
-  const handleAnswer = async (fromId: string, answer: any) => {
-    const pc = pcsRef.current[fromId];
+  const handleAnswer = async (fromId: string, answer: any, connType: 'camera' | 'screen') => {
+    const pc = pcsRef.current[fromId]?.[connType];
     if (pc) {
       await pc.setRemoteDescription(new RTCSessionDescription(answer));
     }
   };
 
-  const handleCandidate = async (fromId: string, candidate: any) => {
-    const pc = pcsRef.current[fromId];
+  const handleCandidate = async (fromId: string, candidate: any, connType: 'camera' | 'screen') => {
+    const pc = pcsRef.current[fromId]?.[connType];
     if (pc) {
       await pc.addIceCandidate(new RTCIceCandidate(candidate));
     }
@@ -369,7 +375,7 @@ const StudyRoomView: React.FC = () => {
     if (roomRef.current) {
       updateDoc(doc(roomRef.current, 'participants', userId), {
         isMuted: newMuted,
-        forceMute: null // Clear force mute if toggled manually
+        forceMute: null
       });
     }
   };
@@ -389,28 +395,19 @@ const StudyRoomView: React.FC = () => {
     if (isSharing) { stopScreenShare(); return; }
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const screenTrack = screenStream.getVideoTracks()[0];
-      
-      // Tag the stream for easier identification
-      Object.defineProperty(screenStream, 'id', { value: `screen_${userId}_${Date.now()}`, writable: true });
-
-      // Add track to all PCs
-      Object.values(pcsRef.current).forEach(pc => {
-        pc.addTrack(screenTrack, screenStream);
-      });
-
-      // Trigger renegotiation for all
-      participants.forEach(p => {
-        if (p.id !== userId) initiateCall(p.id);
-      });
-
       screenStreamRef.current = screenStream;
+
+      // Initiate screen connections to all participants
+      participants.forEach(p => {
+        if (p.id !== userId) {
+          initiateConnection(p.id, 'screen');
+        }
+      });
+
+      const screenTrack = screenStream.getVideoTracks()[0];
       screenTrack.onended = stopScreenShare;
       setIsSharing(true);
-      updateDoc(doc(roomRef.current, 'participants', userId), { 
-        isSharing: true,
-        screenStreamId: screenStream.id 
-      });
+      updateDoc(doc(roomRef.current, 'participants', userId), { isSharing: true });
     } catch (err) {
       console.error(err);
     }
@@ -419,47 +416,36 @@ const StudyRoomView: React.FC = () => {
   const stopScreenShare = () => {
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach(track => track.stop());
-      
-      // Remove track from PCs and renegotiate
-      Object.values(pcsRef.current).forEach(pc => {
-        const senders = pc.getSenders();
-        const screenTrackId = screenStreamRef.current?.getVideoTracks()[0]?.id;
-        const screenSender = senders.find(s => s.track?.id === screenTrackId);
-        if (screenSender) pc.removeTrack(screenSender);
+      Object.keys(pcsRef.current).forEach(otherId => {
+        const screenPC = pcsRef.current[otherId]?.screen;
+        if (screenPC) {
+          screenPC.close();
+          pcsRef.current[otherId].screen = null;
+        }
       });
-
-      participants.forEach(p => {
-        if (p.id !== userId) initiateCall(p.id);
-      });
-
       screenStreamRef.current = null;
     }
     setIsSharing(false);
-    if (roomRef.current) updateDoc(doc(roomRef.current, 'participants', userId), { 
-      isSharing: false,
-      screenStreamId: null 
-    });
+    if (roomRef.current) updateDoc(doc(roomRef.current, 'participants', userId), { isSharing: false });
   };
 
   const leaveRoom = async () => {
     if (isHost && roomRef.current) {
       await updateDoc(roomRef.current, { status: 'ended' });
     }
-
     if (roomRef.current && userId) {
       await deleteDoc(doc(roomRef.current, 'participants', userId));
     }
-
-    // Stop tracks
     localStreamRef.current?.getTracks().forEach(track => track.stop());
-
-    // Close connections
-    Object.values(pcsRef.current).forEach(pc => pc.close());
+    Object.values(pcsRef.current).forEach(conns => {
+      conns.camera?.close();
+      conns.screen?.close();
+    });
     pcsRef.current = {};
-
     setMode('lobby');
     setParticipants([]);
     setRemoteStreams({});
+    setRemoteScreenStreams({});
     setIsSharing(false);
   };
 
@@ -470,8 +456,6 @@ const StudyRoomView: React.FC = () => {
 
   const muteAll = async () => {
     if (!isHost) return;
-    // We send a signal via firestore to everyone
-    // In a real app we might use WebRTC data channels, but here firestore is our "control channel"
     participants.forEach(p => {
       if (p.id !== userId) {
         updateDoc(doc(roomRef.current, 'participants', p.id), { forceMute: Date.now() });
@@ -527,15 +511,13 @@ const StudyRoomView: React.FC = () => {
                 )}
               </button>
 
-              <div className="relative group">
-                <button
-                  onClick={joinRoom}
-                  className="w-full h-20 bg-white/5 border border-white/10 hover:border-white/20 text-white font-black rounded-2xl flex flex-col items-center justify-center gap-1 transition-all"
-                >
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  <span className="text-[10px] uppercase tracking-widest">{tx('انضمام برمز', 'Join with Code')}</span>
-                </button>
-              </div>
+              <button
+                onClick={joinRoom}
+                className="h-20 bg-white/5 border border-white/10 hover:border-white/20 text-white font-black rounded-2xl flex flex-col items-center justify-center gap-1 transition-all group"
+              >
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <span className="text-[10px] uppercase tracking-widest">{tx('انضمام برمز', 'Join with Code')}</span>
+              </button>
             </div>
 
             <div className="relative">
@@ -567,7 +549,6 @@ const StudyRoomView: React.FC = () => {
 
   return (
     <div className="flex-1 flex flex-col h-screen min-h-0 bg-[#030303] relative overflow-hidden animate-in zoom-in-95 duration-500">
-      {/* Header Info */}
       <div className="absolute top-6 left-6 z-20 flex items-center gap-4">
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 px-6 py-3 rounded-2xl flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -584,12 +565,9 @@ const StudyRoomView: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
       <div className="flex-1 p-4 md:p-6 pb-32 overflow-hidden flex flex-col">
         {participants.find(p => p.isSharing) ? (
-          // Teams Style Layout
           <div className="flex-1 flex flex-col gap-4 overflow-hidden">
-            {/* Screen Share Hero */}
             <div className="flex-1 bg-[#0a0a0c] rounded-[2.5rem] border border-white/10 overflow-hidden relative shadow-2xl">
               {participants.map(p => p.isSharing && (
                 <div key={p.id} className="w-full h-full bg-black flex items-center justify-center">
@@ -605,9 +583,7 @@ const StudyRoomView: React.FC = () => {
               ))}
             </div>
 
-            {/* Participants Bottom Bar */}
             <div className="h-28 md:h-36 flex gap-4 overflow-x-auto pb-2 scrollbar-none snap-x">
-              {/* Me */}
               <div className="min-w-[120px] md:min-w-[160px] h-full bg-[#111114] rounded-2xl border border-white/5 overflow-hidden relative snap-start">
                 <video ref={localVideoRef} autoPlay muted playsInline className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`} />
                 {isVideoOff && <div className="absolute inset-0 flex items-center justify-center text-slate-700"><VideoOff className="w-6 h-6" /></div>}
@@ -615,7 +591,6 @@ const StudyRoomView: React.FC = () => {
                   {tx('أنا', 'Me')}
                 </div>
               </div>
-              {/* Others */}
               {participants.filter(p => p.id !== userId && !p.isSharing).map(p => (
                 <div key={p.id} className="min-w-[120px] md:min-w-[160px] h-full bg-[#111114] rounded-2xl border border-white/5 overflow-hidden relative snap-start">
                   <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
@@ -627,21 +602,13 @@ const StudyRoomView: React.FC = () => {
             </div>
           </div>
         ) : (
-          // Normal Grid Layout
           <div className={`grid h-full gap-4 md:gap-6 ${participants.length <= 1 ? 'grid-cols-1' :
             participants.length <= 2 ? 'grid-cols-1 md:grid-cols-2' :
               participants.length <= 4 ? 'grid-cols-2' :
                 'grid-cols-2 lg:grid-cols-3'
             }`}>
-            {/* Local Participant */}
             <div className="relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group">
-              <video
-                ref={localVideoRef}
-                autoPlay
-                muted
-                playsInline
-                className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`}
-              />
+              <video ref={localVideoRef} autoPlay muted playsInline className={`w-full h-full object-cover mirror ${isVideoOff ? 'hidden' : ''}`} />
               {isVideoOff && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/20 to-black">
                   <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center border border-white/10">
@@ -658,7 +625,6 @@ const StudyRoomView: React.FC = () => {
               </div>
             </div>
 
-            {/* Remote Participants */}
             {participants.filter(p => p.id !== userId).map(p => (
               <div key={p.id} className="relative bg-[#0d0d0f] rounded-[2.5rem] overflow-hidden border border-white/5 shadow-2xl transition-all group">
                 <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
@@ -682,46 +648,24 @@ const StudyRoomView: React.FC = () => {
         )}
       </div>
 
-      {/* Toolbar */}
       <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] w-max max-w-[95vw] pointer-events-auto select-none isolate">
         <div className="bg-[#0f0f12]/95 backdrop-blur-3xl px-4 md:px-8 py-3 md:py-4 rounded-[2rem] md:rounded-[2.5rem] border border-white/20 shadow-[0_30px_60px_rgba(0,0,0,0.8)] flex items-center gap-3 md:gap-6 pointer-events-auto">
-          <button
-            onClick={() => toggleMic()}
-            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isMuted ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
-          >
+          <button onClick={toggleMic} className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isMuted ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}>
             {isMuted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
-
-          <button
-            onClick={() => toggleCamera()}
-            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isVideoOff ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
-          >
+          <button onClick={toggleCamera} className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isVideoOff ? 'bg-red-600 text-white' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}>
             {isVideoOff ? <VideoOff className="w-5 h-5 md:w-6 md:h-6" /> : <Camera className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
-
-          <button
-            onClick={() => shareScreen()}
-            className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isSharing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}
-          >
+          <button onClick={shareScreen} className={`p-4 md:p-5 rounded-xl md:rounded-2xl transition-all cursor-pointer active:scale-95 pointer-events-auto ${isSharing ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'}`}>
             {isSharing ? <ScreenShare className="w-5 h-5 md:w-6 md:h-6" /> : <Monitor className="w-5 h-5 md:w-6 md:h-6" />}
           </button>
-
           {isHost && (
-            <button
-              onClick={() => muteAll()}
-              className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-white/5 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all cursor-pointer active:scale-95 pointer-events-auto"
-              title={tx('كتم صوت الجميع', 'Mute All')}
-            >
+            <button onClick={muteAll} className="p-4 md:p-5 rounded-xl md:rounded-2xl bg-white/5 text-indigo-400 hover:bg-indigo-600 hover:text-white transition-all cursor-pointer active:scale-95 pointer-events-auto" title={tx('كتم صوت الجميع', 'Mute All')}>
               <VolumeX className="w-5 h-5 md:w-6 md:h-6" />
             </button>
           )}
-
           <div className="w-px h-8 md:h-10 bg-white/10 mx-1 md:mx-2" />
-
-          <button
-            onClick={() => leaveRoom()}
-            className="p-4 md:p-5 bg-red-600 hover:bg-red-500 text-white rounded-xl md:rounded-2xl transition-all shadow-lg shadow-red-600/20 cursor-pointer active:scale-95 pointer-events-auto"
-          >
+          <button onClick={leaveRoom} className="p-4 md:p-5 bg-red-600 hover:bg-red-500 text-white rounded-xl md:rounded-2xl transition-all shadow-lg shadow-red-600/20 cursor-pointer active:scale-95 pointer-events-auto">
             <LogOut className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
@@ -736,7 +680,6 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; classN
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
-      // Handle auto-play issues on mobile/tablets
       const playVideo = async () => {
         try {
           if (videoRef.current) await videoRef.current.play();
@@ -750,13 +693,7 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; classN
 
   return (
     <>
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className={`${className} ${isVideoOff ? 'hidden' : ''}`}
-      />
+      <video ref={videoRef} autoPlay playsInline muted className={`${className} ${isVideoOff ? 'hidden' : ''}`} />
       {isVideoOff && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-indigo-900/10 to-black">
           <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center border border-white/5 opacity-50">
@@ -768,22 +705,11 @@ const RemoteVideo: React.FC<{ stream?: MediaStream; isVideoOff?: boolean; classN
   );
 };
 
-// --- CSS Helper for mirror effect ---
 const AR_STYLE = `
-  .mirror {
-    transform: scaleX(-1);
-  }
-  button {
-    touch-action: manipulation;
-    -webkit-tap-highlight-color: transparent;
-  }
-  .scrollbar-none::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-none {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .mirror { transform: scaleX(-1); }
+  button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .scrollbar-none::-webkit-scrollbar { display: none; }
+  .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 `;
 
 const ArrowRight = ({ className }: { className?: string }) => (
