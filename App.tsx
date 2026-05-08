@@ -112,7 +112,7 @@ const App: React.FC = () => {
   };
 
   const isChat = activeTab === 'chat';
-  const showFAB = activeTab !== 'voice' && activeTab !== 'teacher-uae' && activeTab !== 'translator';
+  const showFAB = activeTab !== 'voice' && activeTab !== 'teacher-uae' && activeTab !== 'translator' && !isStandalone;
 
   return (
     <div className="h-[100dvh] flex flex-col bg-[#050505] overflow-hidden">
@@ -123,7 +123,8 @@ const App: React.FC = () => {
 
       <main
         className={`flex-1 relative flex flex-col overflow-hidden ${
-          isChat || isStandalone
+          isStandalone ? '' : 
+          isChat
             ? 'mt-[60px] md:mt-[68px]'
             : 'mt-[72px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10'
         }`}
@@ -135,9 +136,13 @@ const App: React.FC = () => {
               : 'max-w-[1920px] mx-auto w-full px-4 md:px-10 pb-20 md:pb-10'
           }`}
         >
-          <PageTransition tabKey={activeTab}>
-            {renderContent()}
-          </PageTransition>
+          {isStandalone ? (
+            renderContent()
+          ) : (
+            <PageTransition tabKey={activeTab}>
+              {renderContent()}
+            </PageTransition>
+          )}
         </div>
       </main>
 
