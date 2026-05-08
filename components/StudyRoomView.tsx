@@ -587,7 +587,7 @@ const StudyRoomView: React.FC = () => {
                 </div>
               </div>
               {/* Others */}
-              {participants.filter(p => p.id !== userId).map(p => (
+              {participants.filter(p => p.id !== userId && !p.isSharing).map(p => (
                 <div key={p.id} className="min-w-[120px] md:min-w-[160px] h-full bg-[#111114] rounded-2xl border border-white/5 overflow-hidden relative snap-start">
                   <RemoteVideo stream={remoteStreams[p.id]} isVideoOff={p.isVideoOff} className="w-full h-full object-cover" />
                   <div className="absolute bottom-2 left-2 right-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg text-[8px] font-black text-white uppercase truncate">
