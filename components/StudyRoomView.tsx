@@ -387,7 +387,7 @@ const StudyRoomView: React.FC = () => {
         sender?.replaceTrack(screenTrack);
       });
 
-      if (localVideoRef.current) localVideoRef.current.srcObject = screenStream;
+      // Stay on face cam local preview - NO change to localVideoRef srcObject
       screenStreamRef.current = screenStream;
       screenTrack.onended = stopScreenShare;
       setIsSharing(true);
@@ -405,7 +405,7 @@ const StudyRoomView: React.FC = () => {
         sender?.replaceTrack(camTrack);
       });
     }
-    if (localVideoRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+    // No need to revert localVideoRef - it was never changed
     screenStreamRef.current?.getTracks().forEach(t => t.stop());
     screenStreamRef.current = null;
     setIsSharing(false);
@@ -563,13 +563,13 @@ const StudyRoomView: React.FC = () => {
             {/* Screen Share Hero */}
             <div className="flex-1 bg-[#0a0a0c] rounded-[2.5rem] border border-white/10 overflow-hidden relative shadow-2xl">
               {participants.map(p => p.isSharing && (
-                <div key={p.id} className="w-full h-full">
+                <div key={p.id} className="w-full h-full bg-black flex items-center justify-center">
                   <RemoteVideo
-                    stream={p.id === userId ? screenStreamRef.current! : remoteStreams[p.id]}
+                    stream={p.id === userId ? screenStreamRef.current! : (p.isSharing ? remoteStreams[p.id] : null)}
                     isVideoOff={false}
                     className="w-full h-full object-contain"
                   />
-                  <div className="absolute top-4 left-4 bg-emerald-600 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white animate-pulse">
+                  <div className="absolute top-4 left-4 bg-emerald-600/80 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-white animate-pulse border border-white/10">
                     {p.name} {tx('يشارك الشاشة الآن', 'is sharing screen')}
                   </div>
                 </div>

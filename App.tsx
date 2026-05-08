@@ -86,7 +86,7 @@ const VoiceFAB: React.FC<{ onClick: () => void }> = ({ onClick }) => {
 // ── App ────────────────────────────────────────────────────────
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('home');
-  const isStandalone = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('code');
+  const isStandalone = typeof window !== 'undefined' && window.location.href.includes('code=');
 
   useEffect(() => {
     if (isStandalone) {
