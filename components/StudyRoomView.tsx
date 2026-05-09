@@ -10,12 +10,12 @@ import {
 } from 'firebase/firestore';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBtFwkt4Y6fayXkgmWdlDYOIgzRZJWALGo",
-  authDomain: "teacher-ai-calls.firebaseapp.com",
-  projectId: "teacher-ai-calls",
-  storageBucket: "teacher-ai-calls.firebasestorage.app",
-  messagingSenderId: "138657826341",
-  appId: "1:138657826341:web:a404b642f89e9bec81a1cc"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase
