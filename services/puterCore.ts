@@ -188,16 +188,16 @@ export async function puterVoice(text: string, lang: 'ar' | 'en' = 'ar', voiceNa
                 : 'Speak in a clear, professional, and educational English voice.',
         });
 
-        currentAudioElement = audio;
-        audio.play().catch(() => {
-    window.speechSynthesis.cancel();
+       currentAudioElement = audio;
+audio.onended = () => {
+    if (currentAudioElement === audio) currentAudioElement = null;
+};
+audio.play().catch(() => {
+    currentAudioElement = null;
     const utterance = new SpeechSynthesisUtterance(cleanText);
     utterance.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
     window.speechSynthesis.speak(utterance);
 });
-
-        audio.onended = () => {
-            if (currentAudioElement === audio) currentAudioElement = null;
         };
     } catch (error) {
         console.error("TTS Core Error:", error);
