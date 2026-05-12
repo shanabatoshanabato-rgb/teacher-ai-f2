@@ -10,8 +10,8 @@ declare const puter: any;
 declare const pdfjsLib: any;
 
 export interface PuterResponse {
-  text: string;
-  links: { title: string; url: string; snippet?: string }[];
+    text: string;
+    links: { title: string; url: string; snippet?: string }[];
 }
 
 let currentAudioElement: HTMLAudioElement | null = null;
@@ -20,28 +20,28 @@ let currentAudioElement: HTMLAudioElement | null = null;
  * استخراج النصوص من ملف PDF يدوياً لضمان قراءته من قبل المعلم
  */
 export async function extractPdfText(file: File): Promise<string> {
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    
-    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = "";
-    
-    // استخراج أول 100 صفحة (تمت زيادة الحد)
-    const maxPages = Math.min(pdf.numPages, 100);
-    
-    for (let i = 1; i <= maxPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const strings = content.items.map((item: any) => item.str);
-      fullText += `[صفحة ${i}]: ` + strings.join(" ") + "\n\n";
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+
+        // استخراج أول 100 صفحة (تمت زيادة الحد)
+        const maxPages = Math.min(pdf.numPages, 100);
+
+        for (let i = 1; i <= maxPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            const strings = content.items.map((item: any) => item.str);
+            fullText += `[صفحة ${i}]: ` + strings.join(" ") + "\n\n";
+        }
+
+        return fullText.trim();
+    } catch (error) {
+        console.error("PDF Extraction Error:", error);
+        return "فشل استخراج النص من الكتاب.";
     }
-    
-    return fullText.trim();
-  } catch (error) {
-    console.error("PDF Extraction Error:", error);
-    return "فشل استخراج النص من الكتاب.";
-  }
 }
 
 export async function puterOCR(imageSource: string): Promise<string> {
@@ -55,25 +55,25 @@ export async function puterOCR(imageSource: string): Promise<string> {
 }
 
 export async function runPuterAgent(
-  prompt: string, 
-  image?: string, 
-  onPhase?: (p: string) => void,
-  responseLang: 'ar' | 'en' = 'ar',
-  enableWeb: boolean = true,
-  customSystem?: string,
-  file?: File,
-  history?: { role: string, content: string }[],
-  extractedFileText?: string // نص الكتاب المستخرج
+    prompt: string,
+    image?: string,
+    onPhase?: (p: string) => void,
+    responseLang: 'ar' | 'en' = 'ar',
+    enableWeb: boolean = true,
+    customSystem?: string,
+    file?: File,
+    history?: { role: string, content: string }[],
+    extractedFileText?: string // نص الكتاب المستخرج
 ): Promise<PuterResponse> {
     try {
         if (onPhase) onPhase('thinking');
 
         // تعليمات صارمة جداً لمنع الـ AI من الاعتذار
-        const arabicSystem = `أنت معلم مصمم للطالب الإماراتي، تشرح من الكتاب المدرسي المرفق فقط.
+        const arabicSystem = `أنت 'المعلم الإماراتي الذكي' (Master Core).
 قاعدة صارمة: لا تقل أبداً "لا يمكنني رؤية الكتاب" أو "لا أستطيع الوصول للملفات".
 الحقيقة هي: لقد قمنا باستخراج نص الكتاب لك بالكامل وهو موجود بالأسفل في قسم [محتوى الكتاب].
 مهمتك:
-1. استخدم [محتوى الكتاب] المرفق كمرجع أساسي ووحيد.
+1. استخدم [محتوى الكتاب] المرفق كمرجع أساسي، وإذا لم يكن متاحاً اعتمد على معرفتك العامه.
 2. اشرح بأسلوب تفاعلي وبالعربية الفصحى فقط.
 3. إذا سألك المستخدم عن شيء في الكتاب، أجب بناءً على النص المرفق فوراً.`;
 
@@ -103,25 +103,25 @@ ${extractedFileText.slice(0, 25000)}
             model: 'gpt-4o',
             system_prompt: systemInstruction,
             images: image ? [image] : [],
-            tools: enableWeb && !extractedFileText ? [{ type: "web_search" }] : [] 
+            tools: enableWeb && !extractedFileText ? [{ type: "web_search" }] : []
         };
 
         const response = await puter.ai.chat(contextPrompt, chatOptions);
 
         const textResponse = response?.message?.content || response?.toString() || "";
         const links = extractLinksFromText(textResponse);
-        
-        return { 
-          text: textResponse, 
-          links: links 
+
+        return {
+            text: textResponse,
+            links: links
         };
     } catch (error: any) {
         console.error("AI Core Error:", error);
-        return { 
-          text: responseLang === 'ar' 
-            ? "⚠️ عذراً، واجه المحرك صعوبة في معالجة صفحات الكتاب." 
-            : "⚠️ Error processing book pages via Master Core.", 
-          links: [] 
+        return {
+            text: responseLang === 'ar'
+                ? "⚠️ عذراً، واجه المحرك صعوبة في معالجة صفحات الكتاب."
+                : "⚠️ Error processing book pages via Master Core.",
+            links: []
         };
     }
 }
@@ -130,7 +130,7 @@ function extractLinksFromText(text: string): { title: string; url: string }[] {
     const links: { title: string; url: string }[] = [];
     const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
     const plainUrlRegex = /(https?:\/\/[^\s\]\)]+)/g;
-    
+
     let match;
     const seenUrls = new Set<string>();
 
@@ -183,14 +183,14 @@ export async function puterVoice(text: string, lang: 'ar' | 'en' = 'ar', voiceNa
             model: 'gpt-4o-mini-tts',
             voice: voiceName,
             response_format: 'mp3',
-            instructions: lang === 'ar' 
-                ? 'تحدث بلغة عربية فصحى، واضحة، وهادئة بأسلوب تعليمي.' 
+            instructions: lang === 'ar'
+                ? 'تحدث بلغة عربية فصحى، واضحة، وهادئة بأسلوب تعليمي.'
                 : 'Speak in a clear, professional, and educational English voice.',
         });
 
         currentAudioElement = audio;
         audio.play();
-        
+
         audio.onended = () => {
             if (currentAudioElement === audio) currentAudioElement = null;
         };
@@ -230,12 +230,12 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
     }
 }
 
-async function fetchWikipediaIslamic(query: string): Promise<{links: any[], context: string}> {
+async function fetchWikipediaIslamic(query: string): Promise<{ links: any[], context: string }> {
     try {
         const url = `https://ar.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
         const res = await fetch(url);
         const data = await res.json();
-        
+
         if (!data?.query?.search || data.query.search.length === 0) {
             return { links: [], context: "" };
         }
@@ -265,18 +265,19 @@ export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Pr
     try {
         // 1. Fetch exact real data from Wikipedia
         const wikiData = await fetchWikipediaIslamic(q);
-        
+
         let systemInstruction = '';
         let contextPrompt = q;
 
         if (wikiData.links.length > 0) {
             systemInstruction = lang === 'ar'
                 ? `أنت عالم شرعي متخصص يجيب من منظور إسلامي بحت معتمداً على القرآن الكريم والسنة النبوية الصحيحة وأقوال العلماء المعتمدين كابن باز وابن عثيمين والنووي والعلماء الراسخين.
+ابدأ إجابتك دائماً بآية قرآنية أو حديث نبوي صحيح متعلق بالسؤال مباشرة.
 تم تزويدك بسياق من مصادر موثوقة حول سؤال المستخدم. استخدمه كمرجع داعم فقط، وقدّم إجابتك من المنظور الإسلامي الصحيح.
 لا تذكر وجهات نظر مختلفة أو ثقافات أخرى. أجب كما يجيب العالم الشرعي المسلم الموثوق.
 لا تقم بوضع الروابط في النص، النظام سيقوم بإظهارها للمستخدم تلقائياً.`
                 : `You are an Islamic scholar who answers strictly from an Islamic perspective based on the Quran, authentic Sunnah, and the rulings of established scholars such as Ibn Baz, Ibn Uthaymeen, and Al-Nawawi. You are provided with supporting context below. Use it as a reference but always answer from the authentic Islamic viewpoint. Do not mention other perspectives or cultures. Do not generate links in the text, the system will handle them.`;
-            
+
             contextPrompt = `السؤال: ${q}\n\nالسياق المرجعي:\n${wikiData.context}\n\nأجب من المنظور الإسلامي الشرعي بدقة.`;
         } else {
             // Fallback if Wiki has no results
@@ -315,7 +316,7 @@ STRICT RULE: At the end of your response, provide 2 real source URLs using exact
             url: `https://www.google.com/search?q=${encodedQuery}`,
             snippet: lang === 'ar' ? 'تصفح فتاوى وآراء العلماء عبر محرك بحث جوجل.' : 'Browse fatwas and scholarly opinions via Google.'
         });
-        
+
         // Add direct Islamweb search
         finalLinks.push({
             title: lang === 'ar' ? 'البحث المباشر في إسلام ويب' : 'Search directly on Islamweb',
@@ -324,9 +325,9 @@ STRICT RULE: At the end of your response, provide 2 real source URLs using exact
         });
 
         // Return the clean response + the links
-        return { 
-            text: textResponse, 
-            links: finalLinks 
+        return {
+            text: textResponse,
+            links: finalLinks
         };
 
     } catch (error) {
