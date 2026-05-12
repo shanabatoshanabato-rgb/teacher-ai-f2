@@ -382,15 +382,29 @@ export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (
 
     if (img) {
         if (onPhase) onPhase('ocr');
-        // محاولة OCR أولاً
+
+        // ✅ STEP 1: شغل OCR الأول عشان تستخرج النص من الصورة
         const extracted = await puterOCR(img);
+
         if (extracted && extracted.trim().length > 10) {
-            // OCR نجح — استخدم النص
-            contextInput = `[نص المسألة المستخرج من الصورة: "${extracted}"] \n\n [تعليمات الطالب: "${q}"]`;
+            // ✅ OCR نجح — استخدم النص المستخرج كـ context (مش الصورة)
+            contextInput = `[المسألة المستخرجة من الصورة OCR: "${extracted}"] 
+
+ [تعليمات الطالب: "${q}"]`;
+
             if (onPhase) onPhase('thinking');
-            return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, undefined, onPhase, lang, false, systemInstruction);
+
+            // ❌ لا ترسل الصورة — بعت النص المستخرج بس
+            return runPuterAgent(
+                `قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, 
+                undefined,  // لا صورة — النص موجود في الـ prompt
+                onPhase, 
+                lang, 
+                false, 
+                systemInstruction
+            );
         } else {
-            // OCR فشل — ابعت الصورة مباشرة كـ vision
+            // ❌ OCR فشل — حاول ترسل الصورة كـ fallback (vision)
             if (onPhase) onPhase('thinking');
             const visionPrompt = lang === 'ar'
                 ? `انظر إلى الصورة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
