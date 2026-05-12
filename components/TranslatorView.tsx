@@ -169,6 +169,7 @@ const TranslatorView: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const finalTextRef = useRef('');
   const isManualStopRef = useRef(false);
+  const debounceTimerRef = useRef<any>(null);
   const isProcessingRef = useRef(false); // Guard to prevent double translation/speech
 
   const reset = useCallback(() => {
@@ -215,40 +216,51 @@ const TranslatorView: React.FC = () => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { setError(isAr ? 'المتصفح لا يدعم الصوت.' : 'Speech recognition not supported.'); setState('idle'); return; }
 
-    const rec = new SR();
-    rec.continuous = true;
-    rec.interimResults = true;
-    rec.lang = srcLang.code;
-    recognitionRef.current = rec;
+    const initRecognition = () => {
+      const rec = new SR();
+      rec.continuous = false; // Manual continuous mode to prevent buffer bloat
+      rec.interimResults = true;
+      rec.lang = srcLang.code;
 
-    rec.onresult = (e: any) => {
-      let interimTranscript = '';
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const transcript = e.results[i][0].transcript;
-        if (e.results[i].isFinal) {
-          finalTextRef.current += transcript + ' ';
-        } else {
-          interimTranscript = transcript;
+      rec.onresult = (e: any) => {
+        let interimTranscript = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          const transcript = e.results[i][0].transcript;
+          if (e.results[i].isFinal) {
+            finalTextRef.current += transcript + ' ';
+          } else {
+            interimTranscript = transcript;
+          }
         }
-      }
-      setLiveText((finalTextRef.current + interimTranscript).trim());
+        
+        const newText = (finalTextRef.current + interimTranscript).trim();
+        clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+          setLiveText(newText);
+        }, 100);
+      };
+
+      rec.onerror = (e: any) => {
+        if (e.error === 'network') setError(isAr ? 'خطأ في الشبكة.' : 'Network error.');
+        if (e.error === 'not-allowed') setError(isAr ? 'الميكروفون محجوب.' : 'Microphone blocked.');
+      };
+
+      rec.onend = () => {
+        if (!isManualStopRef.current) {
+          // Rapid restart for manual continuous behavior
+          setTimeout(() => {
+            if (!isManualStopRef.current) initRecognition();
+          }, 100);
+        } else {
+          setState(s => s === 'listening' ? 'idle' : s);
+        }
+      };
+
+      rec.start();
+      recognitionRef.current = rec;
     };
 
-    rec.onerror = (e: any) => {
-      if (e.error === 'network') setError(isAr ? 'خطأ في الشبكة.' : 'Network error.');
-      if (e.error === 'not-allowed') setError(isAr ? 'الميكروفون محجوب.' : 'Microphone blocked.');
-    };
-
-    rec.onend = () => {
-      // If the browser stopped it but the user didn't click Stop, RESTART.
-      if (!isManualStopRef.current) {
-        try { rec.start(); } catch (err) { console.error("Auto-restart failed:", err); }
-      } else {
-        setState(s => s === 'listening' ? 'idle' : s);
-      }
-    };
-
-    rec.start();
+    initRecognition();
   }, [srcLang, isAr]);
 
   // Stop listening and translate everything accumulated
