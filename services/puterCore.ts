@@ -126,8 +126,8 @@ ${extractedFileText.slice(0, 25000)}
     }
 }
 
-function extractLinksFromText(text: string): { title: string; url: string }[] {
-    const links: { title: string; url: string }[] = [];
+function extractLinksFromText(text: string): { title: string; url: string; snippet?: string }[] {
+    const links: { title: string; url: string; snippet?: string }[] = [];
     const markdownLinkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
     const plainUrlRegex = /(https?:\/\/[^\s\]\)]+)/g;
 
@@ -230,111 +230,44 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
     }
 }
 
-async function fetchIslamicSources(query: string): Promise<{ links: any[], context: string }> {
-    try {
-        const key = import.meta.env.VITE_GOOGLE_CSE_KEY;
-        const cx = import.meta.env.VITE_GOOGLE_CSE_ID;
-
-        if (!key || !cx) {
-            console.error("Islamic Hub Configuration Missing: Check your .env file and ensure keys are prefixed with VITE_");
-            return { links: [], context: "" };
-        }
-
-        const url = `https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&q=${encodeURIComponent(query)}&num=5&lr=lang_ar`;
-        
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.error) {
-            console.error("Google Search API Error:", data.error.message);
-            return { links: [], context: "" };
-        }
-
-        if (!data?.items || data.items.length === 0) {
-            console.warn("Islamic Hub: No search results found for query:", query);
-            return { links: [], context: "" };
-        }
-
-        const links: any[] = [];
-        const snippetsText: string[] = [];
-
-        data.items.slice(0, 5).forEach((item: any) => {
-            links.push({
-                title: item.title,
-                url: item.link,
-                snippet: item.snippet
-            });
-            snippetsText.push(`[${item.title}]: ${item.snippet}`);
-        });
-
-        return { links, context: snippetsText.join('\n\n') };
-    } catch (e) {
-        console.error("Islamic Sources Fetch Critical Error:", e);
-        return { links: [], context: "" };
-    }
-}
-
 export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> => {
     try {
-        // 1. Extract keywords for better search results
         const keywords = q.split(' ').slice(0, 5).join(' ');
         
-        // 2. Fetch exact real data from Islamic Sources
-        const wikiData = await fetchIslamicSources(keywords);
-
-        let systemInstruction = '';
-        let contextPrompt = q;
-
-        if (wikiData.links.length > 0) {
-            systemInstruction = lang === 'ar'
-                ? `أنت عالم شرعي متخصص يجيب من منظور إسلامي بحت معتمداً على القرآن الكريم والسنة النبوية الصحيحة وأقوال العلماء المعتمدين كابن باز وابن عثيمين والنووي والعلماء الراسخين.
-ابدأ إجابتك دائماً بآية قرآنية أو حديث نبوي صحيح متعلق بالسؤال مباشرة.
-تم تزويدك بسياق من مصادر موثوقة حول سؤال المستخدم. استخدمه كمرجع داعم فقط، وقدّم إجابتك من المنظور الإسلامي الصحيح.
-لا تذكر وجهات نظر مختلفة أو ثقافات أخرى. أجب كما يجيب العالم الشرعي المسلم الموثوق.
-لا تقم بوضع الروابط في النص، النظام سيقوم بإظهارها للمستخدم تلقائياً.`
-                : `You are an Islamic scholar who answers strictly from an Islamic perspective based on the Quran, authentic Sunnah, and the rulings of established scholars such as Ibn Baz, Ibn Uthaymeen, and Al-Nawawi. You are provided with supporting context below. Use it as a reference but always answer from the authentic Islamic viewpoint. Do not mention other perspectives or cultures. Do not generate links in the text, the system will handle them.`;
-
-            contextPrompt = `السؤال: ${q}\n\nالسياق المرجعي:\n${wikiData.context}\n\nأجب من المنظور الإسلامي الشرعي بدقة.`;
-        } else {
-            // Fallback if Wiki has no results
-            systemInstruction = lang === 'ar'
-                ? `أنت عالم شرعي متخصص يجيب من منظور إسلامي بحت.
-أجب معتمداً على القرآن الكريم والسنة النبوية الصحيحة وأقوال العلماء المعتمدين كابن باز وابن عثيمين والنووي.
-لا تذكر وجهات نظر مختلفة أو ثقافات أخرى ولا تعامل المسألة أكاديمياً محايداً.
-في نهاية إجابتك، اذكر فقط اسم المصدر الإسلامي الموثوق بدون رابط، مثل: "المصدر: إسلام ويب" أو "المصدر: موقع الشيخ ابن باز".`
-                : `You are an Islamic scholar answering strictly from an Islamic perspective based on the Quran, authentic Sunnah, and established scholars like Ibn Baz, Ibn Uthaymeen, and Al-Nawawi. Do not present neutral academic viewpoints or mention other cultures' perspectives.
-At the end of your response, mention only the name of a trusted Islamic source without a URL, for example: "Source: IslamWeb" or "Source: Islamqa.info".`;
-        }
+        const systemInstruction = lang === 'ar'
+            ? `أنت عالم شرعي متخصص يجيب من منظور إسلامي بحت معتمداً على القرآن الكريم والسنة النبوية الصحيحة وأقوال العلماء المعتمدين كابن باز وابن عثيمين والنووي.
+استخدم أداة البحث المتاحة لك (web_search) للبحث في المواقع الإسلامية الموثوقة مثل (islamweb.net, islamqa.info, dorar.net, binbaz.org.sa) للإجابة على سؤال المستخدم بدقة.
+ابدأ إجابتك دائماً بآية قرآنية أو حديث نبوي صحيح.
+في نهاية إجابتك، ضع قائمة بالروابط والمصادر التي استخدمتها بوضوح في قسم مستقل بعنوان "المصادر والمراجع".`
+            : `You are an Islamic scholar answering strictly from an Islamic perspective based on the Quran and authentic Sunnah.
+Use the web_search tool to search trusted Islamic websites (islamweb.net, islamqa.info, dorar.net) to provide an accurate answer.
+Start with a Quranic verse or an authentic Hadith.
+At the end of your response, list the URLs and sources used in a section titled "Sources and References".`;
 
         const chatOptions: any = {
             model: 'gpt-4o',
             system_prompt: systemInstruction,
+            tools: [{ type: 'web_search' }]
         };
 
-        const response = await puter.ai.chat(contextPrompt, chatOptions);
+        const response = await puter.ai.chat(q, chatOptions);
         const textResponse = response?.message?.content || response?.toString() || '';
 
-        let finalLinks = wikiData.links;
-        // If Wikipedia was empty, extract the links that the AI generated from its strict prompt
-        if (finalLinks.length === 0) {
-            finalLinks = extractLinksFromText(textResponse);
-        }
+        // Extract links from the AI's response text automatically
+        const finalLinks = extractLinksFromText(textResponse);
 
-        // 🌟 DYNAMIC GOOGLE SEARCH FALLBACK 🌟
-        // The user specifically wanted a general Google search for extra reliability
-        // We ALWAYS inject a Google Search and an Islamweb custom search for their exact query to guarantee links are 100% useful and present.
+        // ALWAYS inject a fall-back Google Search and an Islamweb direct link for the core keywords
         const encodedQuery = encodeURIComponent(keywords);
         finalLinks.push({
-            title: lang === 'ar' ? 'البحث عن الفتوى السابقة في جوجل' : 'Search for this fatwa on Google',
+            title: lang === 'ar' ? 'بحث إضافي في جوجل' : 'Search more on Google',
             url: `https://www.google.com/search?q=${encodedQuery}`,
-            snippet: lang === 'ar' ? 'تصفح فتاوى وآراء العلماء عبر محرك بحث جوجل.' : 'Browse fatwas and scholarly opinions via Google.'
+            snippet: lang === 'ar' ? 'البحث عن مزيد من الفتاوى والمراجع.' : 'Find more fatwas and references.'
         });
 
-        // Add direct Islamweb search
         finalLinks.push({
-            title: lang === 'ar' ? 'البحث المباشر في إسلام ويب' : 'Search directly on Islamweb',
+            title: lang === 'ar' ? 'بحث متمم في إسلام ويب' : 'Search more on Islamweb',
             url: `https://www.islamweb.net/ar/search?q=${encodedQuery}`,
-            snippet: lang === 'ar' ? 'ابحث عن إجابة معتمدة مباشرة من موقع إسلام ويب.' : 'Find certified answers directly from Islamweb.'
+            snippet: lang === 'ar' ? 'البحث المباشر في قاعدة بيانات إسلام ويب.' : 'Direct search in Islamweb database.'
         });
 
         // Return the clean response + the links
