@@ -275,9 +275,9 @@ export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Pr
         ];
 
         const forbiddenPhrases = lang === 'ar' ? forbiddenPhrasesAr : forbiddenPhrasesEn;
-        
+
         // لو لقينا عبارة ممنوعة، نرجع نبعت تاني بسؤال أكثر صرامة
-        const hasForbidden = forbiddenPhrases.some(phrase => 
+        const hasForbidden = forbiddenPhrases.some(phrase =>
             textResponse.toLowerCase().includes(phrase.toLowerCase())
         );
 
@@ -286,13 +286,13 @@ export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Pr
             const strictRetry = lang === 'ar'
                 ? `أجب على هذا السؤال الإسلامي مباشرة بدون مقدمات أو اعتذارات. ابدأ بآية قرآنية ثم اشرح الحكم الشرعي: ${q}`
                 : `Answer this Islamic question directly without preambles or apologies. Start with a Quranic verse then explain the Islamic ruling: ${q}`;
-            
+
             const retryResponse = await puter.ai.chat(strictRetry, {
                 model: 'gpt-4o',
                 system_prompt: systemInstruction + '\n\nتحذير: الإجابة السابقة كانت غير مقبولة. يجب الإجابة من منظور إسلامي بحت فوراً.',
                 tools: [{ type: 'web_search' }]
             });
-            
+
             textResponse = retryResponse?.message?.content || retryResponse?.toString() || textResponse;
         }
 
@@ -301,7 +301,7 @@ export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Pr
 
         // إضافة روابط مباشرة وموثوقة
         const encodedQuery = encodeURIComponent(keywords);
-        
+
         // روابط مباشرة لمواقع معروفة
         const trustedSources = [
             {
@@ -340,11 +340,11 @@ export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Pr
 
     } catch (error) {
         console.error('Islamic Brain Error:', error);
-        return { 
-            text: lang === 'ar' 
-                ? "حدث خطأ في البحث. يرجى المحاولة مرة أخرى." 
-                : "An error occurred. Please try again.", 
-            links: [] 
+        return {
+            text: lang === 'ar'
+                ? "حدث خطأ في البحث. يرجى المحاولة مرة أخرى."
+                : "An error occurred. Please try again.",
+            links: []
         };
     }
 };
