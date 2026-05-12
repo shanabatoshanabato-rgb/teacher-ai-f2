@@ -135,7 +135,10 @@ const StudyRoomView: React.FC = () => {
     if (!userName) return alert(tx('يرجى إدخال اسمك', 'Please enter your name'));
     setIsLoading(true);
 
-    const arr = new Uint8Array(6); crypto.getRandomValues(arr); const code = Array.from(arr, b => (b % 36).toString(36)).join('').toUpperCase();
+    const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const arr = new Uint8Array(6);
+    crypto.getRandomValues(arr);
+    const code = Array.from(arr, b => chars[b % chars.length]).join('');
     const roomDoc = doc(db, 'rooms', code);
 
     await setDoc(roomDoc, {
