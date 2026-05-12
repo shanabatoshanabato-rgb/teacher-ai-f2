@@ -264,8 +264,11 @@ async function fetchIslamicSources(query: string): Promise<{ links: any[], conte
 
 export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> => {
     try {
-        // 1. Fetch exact real data from Islamic Sources
-        const wikiData = await fetchIslamicSources(q);
+        // 1. Extract keywords for better search results
+        const keywords = q.split(' ').slice(0, 5).join(' ');
+        
+        // 2. Fetch exact real data from Islamic Sources
+        const wikiData = await fetchIslamicSources(keywords);
 
         let systemInstruction = '';
         let contextPrompt = q;
@@ -308,7 +311,7 @@ At the end of your response, mention only the name of a trusted Islamic source w
         // 🌟 DYNAMIC GOOGLE SEARCH FALLBACK 🌟
         // The user specifically wanted a general Google search for extra reliability
         // We ALWAYS inject a Google Search and an Islamweb custom search for their exact query to guarantee links are 100% useful and present.
-        const encodedQuery = encodeURIComponent(q);
+        const encodedQuery = encodeURIComponent(keywords);
         finalLinks.push({
             title: lang === 'ar' ? 'البحث عن الفتوى السابقة في جوجل' : 'Search for this fatwa on Google',
             url: `https://www.google.com/search?q=${encodedQuery}`,
