@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { runPuterAgent } from '../services/puterCore';
+import { runPuterAgent, puterVoice } from '../services/puterCore';
 import {
   Languages, Mic, MicOff, Volume2, Copy, RefreshCw,
   ChevronDown, Check, RotateCcw, Keyboard, ArrowRight,
@@ -198,7 +197,8 @@ const TranslatorView: React.FC = () => {
       setState('done');
 
       // Automatic speech once
-      speakText(out, tgtLang.code);
+      const lang = tgtLang.code.startsWith('ar') ? 'ar' : 'en';
+      puterVoice(out, lang, lang === 'ar' ? 'alloy' : 'nova');
     } catch {
       setError(isAr ? 'فشلت الترجمة. حاول مرة أخرى.' : 'Translation failed. Please try again.');
       setState('idle');
