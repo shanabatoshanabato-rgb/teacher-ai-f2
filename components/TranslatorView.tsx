@@ -220,11 +220,17 @@ const TranslatorView: React.FC = () => {
     recognitionRef.current = rec;
 
     rec.onresult = (e: any) => {
-      let fullTranscript = '';
+      let finalTranscript = '';
+      let interimTranscript = '';
       for (let i = 0; i < e.results.length; i++) {
-        fullTranscript += e.results[i][0].transcript + ' ';
+        const transcript = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
       }
-      setLiveText(fullTranscript.trim());
+      setLiveText((finalTranscript + interimTranscript).trim());
     };
 
     rec.onerror = (e: any) => {
@@ -323,7 +329,7 @@ const TranslatorView: React.FC = () => {
             <ChevronDown className="w-4 h-4 text-slate-600 group-hover:text-slate-400 shrink-0 transition-colors" />
           </button>
 
-          {/* Swap */}
+          {/* Swap */}ا
           <button onClick={swap}
             className="shrink-0 flex flex-col items-center justify-center px-3 py-2 rounded-xl border border-white/8 hover:border-cyan-500/30 hover:bg-cyan-500/8 transition-all group"
             title="Swap languages">
