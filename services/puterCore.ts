@@ -371,16 +371,14 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
 
 
 export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (p: any) => void, lang: 'ar' | 'en' = 'ar') => {
-    let contextInput = q;
-    if (img) {
-        if (onPhase) onPhase('ocr');
-        const extracted = await puterOCR(img);
-        contextInput = `[نص المسألة المستخرج من الصورة: "${extracted}"] \n\n [تعليمات الطالب: "${q}"]`;
-    }
-    const mathSystem = `أنت المعلم الشامل في الرياضيات والعلوم. استخدم لغة عربية فصحى وتنسيق LaTeX الاحترافي للمسائل.`;
-    const generalSystem = `You are a professional academic tutor. Solve the following problem step-by-step using Proper LaTeX.`;
+    if (onPhase) onPhase('thinking');
+    const mathSystem = `أنت المعلم الشامل في الرياضيات والعلوم. استخدم لغة عربية فصحى وتنسيق LaTeX الاحترافي للمسائل. إذا كانت هناك صورة، اقرأها مباشرة وحل المسألة الموجودة فيها.`;
+    const generalSystem = `You are a professional academic tutor. Solve the following problem step-by-step using Proper LaTeX. If there is an image, read it directly and solve the problem in it.`;
     const systemInstruction = lang === 'ar' ? mathSystem : generalSystem;
-    return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, img, onPhase, lang, true, systemInstruction);
+    const prompt = img
+        ? (lang === 'ar' ? `حل المسألة في الصورة بالتفصيل. مادة: ${s}. ${q ? `ملاحظة الطالب: ${q}` : ''}` : `Solve the problem in the image. Subject: ${s}. ${q ? `Student note: ${q}` : ''}`)
+        : `قم بحل مسألة ${s} التالية بالتفصيل: ${q}`;
+    return runPuterAgent(prompt, img, onPhase, lang, false, systemInstruction);
 };
 
 export async function puterBuildWeb(prompt: string, onPhase?: (p: any) => void) {
