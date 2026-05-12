@@ -101,9 +101,12 @@ ${extractedFileText.slice(0, 25000)}
         const chatOptions: any = {
             model: 'gpt-4o',
             system_prompt: systemInstruction,
-            images: image ? [image] : [],
             tools: enableWeb && !extractedFileText ? [{ type: "web_search" }] : []
         };
+
+        if (image) {
+            chatOptions.images = [image];
+        }
 
         const response = await puter.ai.chat(contextPrompt, chatOptions);
 
@@ -371,14 +374,33 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
 
 
 export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (p: any) => void, lang: 'ar' | 'en' = 'ar') => {
-    if (onPhase) onPhase('thinking');
-    const mathSystem = `أنت المعلم الشامل في الرياضيات والعلوم. استخدم لغة عربية فصحى وتنسيق LaTeX الاحترافي للمسائل. إذا كانت هناك صورة، اقرأها مباشرة وحل المسألة الموجودة فيها.`;
-    const generalSystem = `You are a professional academic tutor. Solve the following problem step-by-step using Proper LaTeX. If there is an image, read it directly and solve the problem in it.`;
+    const mathSystem = `أنت المعلم الشامل في الرياضيات والعلوم. استخدم لغة عربية فصحى وتنسيق LaTeX الاحترافي للمسائل.`;
+    const generalSystem = `You are a professional academic tutor. Solve the following problem step-by-step using Proper LaTeX.`;
     const systemInstruction = lang === 'ar' ? mathSystem : generalSystem;
-    const prompt = img
-        ? (lang === 'ar' ? `حل المسألة في الصورة بالتفصيل. مادة: ${s}. ${q ? `ملاحظة الطالب: ${q}` : ''}` : `Solve the problem in the image. Subject: ${s}. ${q ? `Student note: ${q}` : ''}`)
-        : `قم بحل مسألة ${s} التالية بالتفصيل: ${q}`;
-    return runPuterAgent(prompt, img, onPhase, lang, false, systemInstruction);
+
+    let contextInput = q;
+
+    if (img) {
+        if (onPhase) onPhase('ocr');
+        // محاولة OCR أولاً
+        const extracted = await puterOCR(img);
+        if (extracted && extracted.trim().length > 10) {
+            // OCR نجح — استخدم النص
+            contextInput = `[نص المسألة المستخرج من الصورة: "${extracted}"] \n\n [تعليمات الطالب: "${q}"]`;
+            if (onPhase) onPhase('thinking');
+            return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, undefined, onPhase, lang, false, systemInstruction);
+        } else {
+            // OCR فشل — ابعت الصورة مباشرة كـ vision
+            if (onPhase) onPhase('thinking');
+            const visionPrompt = lang === 'ar'
+                ? `انظر إلى الصورة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
+                : `Look at the image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
+            return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
+        }
+    }
+
+    if (onPhase) onPhase('thinking');
+    return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, undefined, onPhase, lang, false, systemInstruction);
 };
 
 export async function puterBuildWeb(prompt: string, onPhase?: (p: any) => void) {
