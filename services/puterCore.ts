@@ -189,7 +189,12 @@ export async function puterVoice(text: string, lang: 'ar' | 'en' = 'ar', voiceNa
         });
 
         currentAudioElement = audio;
-        audio.play();
+        audio.play().catch(() => {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
+    window.speechSynthesis.speak(utterance);
+});
 
         audio.onended = () => {
             if (currentAudioElement === audio) currentAudioElement = null;
