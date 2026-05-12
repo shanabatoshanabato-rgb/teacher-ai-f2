@@ -167,12 +167,14 @@ const TranslatorView: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [liveText, setLiveText] = useState('');
   const recognitionRef = useRef<any>(null);
+  const finalTextRef = useRef('');
   const isManualStopRef = useRef(false);
   const isProcessingRef = useRef(false); // Guard to prevent double translation/speech
 
   const reset = useCallback(() => {
     isManualStopRef.current = true;
     recognitionRef.current?.stop();
+    finalTextRef.current = '';
     window.speechSynthesis.cancel();
     setState('idle'); setSourceText(''); setTranslated(''); setError('');
     setManualText(''); setLiveText('');
@@ -206,7 +208,7 @@ const TranslatorView: React.FC = () => {
 
   const startListening = useCallback(() => {
     setError(''); setSourceText(''); setTranslated('');
-    setLiveText('');
+    setLiveText(''); finalTextRef.current = '';
     isManualStopRef.current = false;
     setState('listening');
 
@@ -220,17 +222,16 @@ const TranslatorView: React.FC = () => {
     recognitionRef.current = rec;
 
     rec.onresult = (e: any) => {
-      let finalTranscript = '';
       let interimTranscript = '';
-      for (let i = 0; i < e.results.length; i++) {
+      for (let i = e.resultIndex; i < e.results.length; i++) {
         const transcript = e.results[i][0].transcript;
         if (e.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
+          finalTextRef.current += transcript + ' ';
         } else {
-          interimTranscript += transcript;
+          interimTranscript = transcript;
         }
       }
-      setLiveText((finalTranscript + interimTranscript).trim());
+      setLiveText((finalTextRef.current + interimTranscript).trim());
     };
 
     rec.onerror = (e: any) => {
@@ -254,9 +255,10 @@ const TranslatorView: React.FC = () => {
   const stopAndTranslate = useCallback(() => {
     isManualStopRef.current = true;
     recognitionRef.current?.stop();
-    if (liveText.trim()) translate(liveText.trim());
+    const fullText = finalTextRef.current.trim();
+    if (fullText) translate(fullText);
     else setState('idle');
-  }, [translate, liveText]);
+  }, [translate]);
 
   const swap = () => { const t = srcLang; setSrcLang(tgtLang); setTgtLang(t); reset(); };
   const copy = async () => { await navigator.clipboard.writeText(translated); setCopied(true); setTimeout(() => setCopied(false), 2000); };
