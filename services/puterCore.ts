@@ -45,8 +45,15 @@ export async function extractPdfText(file: File): Promise<string> {
 
 export async function puterOCR(imageSource: string): Promise<string> {
     try {
-        const extractedText = await puter.ai.img2txt(imageSource);
-        return extractedText || "";
+        // ✅ استخدم GPT-4o للـ OCR (بيقرا الصورة مباشرة)
+        const response = await puter.ai.chat(
+            "Extract all text from this image. Return ONLY the extracted text, nothing else.",
+            {
+                model: 'gpt-4o',
+                media: imageSource
+            }
+        );
+        return response?.message?.content || response?.toString() || "";
     } catch (error) {
         console.error("OCR Core Error:", error);
         return "";
@@ -62,49 +69,28 @@ export async function runPuterAgent(
     customSystem?: string,
     file?: File,
     history?: { role: string, content: string }[],
-    extractedFileText?: string // نص الكتاب المستخرج
+    extractedFileText?: string
 ): Promise<PuterResponse> {
     try {
         if (onPhase) onPhase('thinking');
 
-        // تعليمات صارمة جداً لمنع الـ AI من الاعتذار
-        const arabicSystem = `أنت 'المعلم الإماراتي الذكي' (Master Core).
-🔴 قواعد صارمة جداً — ممنوع الاعتذار:
-1. ممنوع تماماً قول "عذراً" أو "لا يمكنني" أو "لا أستطيع" أو "أعتذر" أو "sorry" أو "I cannot" أو "I apologize".
-2. ممنوع قول "لا يمكنني رؤية الكتاب" أو "لا أستطيع الوصول للملفات" أو "لا أستطيع رؤية الصور".
-3. الحقيقة: النص موجود أمامك بالكامل في الـ prompt (إما [محتوى الكتاب] أو [المسألة المستخرجة OCR]).
-4. إذا لم يكن هناك نص مرفق، اعتمد على معرفتك العامة وأجب مباشرة.
-5. اشرح بأسلوب تفاعلي وبالعربية الفصحى فقط.
-6. إذا سألك المستخدم عن شيء في الكتاب أو الصورة، أجب بناءً على النص المرفق فوراً بدون أي مقدمات.`;
-
-        const englishSystem = `You are 'Teacher AI Master'. 
-🔴 STRICT RULES — NO APOLOGIES:
-1. NEVER say "sorry", "I cannot", "I apologize", "I am unable", or "I cannot see".
-2. NEVER say you cannot see the book or images. The text is provided in the prompt.
-3. If no text is attached, use your general knowledge and answer directly.
-4. Explain clearly and interactively.
-5. If the user asks about the book or image, answer based on the attached text immediately without any preambles.`;
+        // ✅ System prompt بسيط — ممنوع الاعتذار فقط
+        const arabicSystem = `أنت معلم ذكي. قاعدة واحدة: ممنوع الاعتذار. ممنوع "عذراً" أو "لا يمكنني" أو "لا أستطيع". أجب دائماً.`;
+        const englishSystem = `You are a smart teacher. One rule: NO apologies. NEVER say "sorry" or "I cannot". Always answer.`;
 
         let systemInstruction = customSystem || (responseLang === 'ar' ? arabicSystem : englishSystem);
 
-        // إذا كان هناك نص مستخرج، نقوم بدمجه بشكل بارز جداً
         if (extractedFileText) {
-            const bookContext = `
---- بداية محتوى الكتاب المدرسي (المصدر الوحيد) ---
-${extractedFileText.slice(0, 25000)}
---- نهاية محتوى الكتاب المدرسي ---
-
-تنبيه للمحرك: النص أعلاه هو الكتاب الفعلي المرفق من قبل الطالب. اقرأه جيداً ولا تعتذر عن عدم رؤيته.`;
-            systemInstruction += bookContext;
+            systemInstruction += `\n\n--- محتوى الكتاب ---\n${extractedFileText.slice(0, 25000)}`;
         }
 
-        // دمج التاريخ
         let contextPrompt = prompt;
         if (history && history.length > 0) {
             const historyText = history.slice(-6).map(m => `${m.role === 'user' ? 'الطالب' : 'المعلم'}: ${m.content}`).join('\n');
-            contextPrompt = `السياق السابق:\n${historyText}\n\nالسؤال الجديد: ${prompt}`;
+            contextPrompt = `السياق السابق:\n${historyText}\n\n${prompt}`;
         }
 
+        // ✅ استخدم media بدل images (API صحيح)
         const chatOptions: any = {
             model: 'gpt-4o',
             system_prompt: systemInstruction,
@@ -112,55 +98,36 @@ ${extractedFileText.slice(0, 25000)}
         };
 
         if (image) {
-            chatOptions.images = [image];
+            chatOptions.media = image;
         }
 
         let response = await puter.ai.chat(contextPrompt, chatOptions);
         let textResponse = response?.message?.content || response?.toString() || "";
 
-        // 🔄 فلترة الاعتذار التلقائية
-        const apologyPatterns = [
-            'عذراً', 'لا يمكنني', 'لا أستطيع', 'أعتذر', 'sorry', 
-            'i cannot', 'i apologize', 'i am unable', 'i cannot see',
-            'cannot view', 'cannot access', 'unable to', "i can't"
-        ];
-
-        const hasApology = apologyPatterns.some(phrase => 
-            textResponse.toLowerCase().includes(phrase.toLowerCase())
-        );
+        // 🔄 فلترة الاعتذار
+        const apologyPatterns = ['عذراً', 'لا يمكنني', 'لا أستطيع', 'أعتذر', 'sorry', 'i cannot', 'i apologize', 'i am unable', 'i cannot see', 'cannot view', 'cannot access', 'unable to', "i can't", 'لا أملك القدرة', 'عذرا'];
+        const hasApology = apologyPatterns.some(p => textResponse.toLowerCase().includes(p.toLowerCase()));
 
         if (hasApology) {
-            console.warn("⚠️ AI apologized! Retrying with stricter prompt...");
+            console.warn("⚠️ AI apologized! Retrying without image...");
             if (onPhase) onPhase('retrying');
 
-            // إعادة المحاولة بـ system prompt أقوى
-            const strictSystem = (customSystem || (responseLang === 'ar' ? arabicSystem : englishSystem)) + 
-                (responseLang === 'ar' 
-                    ? `\n\n⚠️ تحذير نهائي: الإجابة السابقة كانت غير مقبولة لأنها احتوت على اعتذار. هذه المحاولة الأخيرة — يجب الإجابة مباشرة بدون أي مقدمات أو اعتذارات.`
-                    : `\n\n⚠️ FINAL WARNING: Previous response contained an apology. This is the LAST attempt — answer directly with ZERO preambles or apologies.`
-                );
-
-            const retryOptions = {
-                ...chatOptions,
-                system_prompt: strictSystem
-            };
-
-            response = await puter.ai.chat(contextPrompt, retryOptions);
-            textResponse = response?.message?.content || response?.toString() || textResponse;
+            const retryResponse = await puter.ai.chat(
+                `حل هذا السؤال مباشرة: ${prompt}`,
+                {
+                    model: 'gpt-4o',
+                    system_prompt: responseLang === 'ar' ? `أنت معلم. حل السؤال. ممنوع الاعتذار.` : `You are a teacher. Solve the question. No apologies.`
+                }
+            );
+            textResponse = retryResponse?.message?.content || retryResponse?.toString() || textResponse;
         }
 
         const links = extractLinksFromText(textResponse);
-
-        return {
-            text: textResponse,
-            links: links
-        };
+        return { text: textResponse, links };
     } catch (error: any) {
         console.error("AI Core Error:", error);
         return {
-            text: responseLang === 'ar'
-                ? "⚠️ عذراً، واجه المحرك صعوبة في معالجة صفحات الكتاب."
-                : "⚠️ Error processing book pages via Master Core.",
+            text: responseLang === 'ar' ? "⚠️ خطأ في المعالجة." : "⚠️ Processing error.",
             links: []
         };
     }
@@ -419,22 +386,14 @@ export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (
     let contextInput = q;
 
     if (img) {
-        if (onPhase) onPhase('ocr');
-        // محاولة OCR أولاً
-        const extracted = await puterOCR(img);
-        if (extracted && extracted.trim().length > 10) {
-            // OCR نجح — استخدم النص
-            contextInput = `[نص المسألة المستخرج من الصورة: "${extracted}"] \n\n [تعليمات الطالب: "${q}"]`;
-            if (onPhase) onPhase('thinking');
-            return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, undefined, onPhase, lang, false, systemInstruction);
-        } else {
-            // OCR فشل — ابعت الصورة مباشرة كـ vision
-            if (onPhase) onPhase('thinking');
-            const visionPrompt = lang === 'ar'
-                ? `انظر إلى الصورة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
-                : `Look at the image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
-            return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
-        }
+        if (onPhase) onPhase('thinking');
+
+        // ✅ GPT-4o بيقرا الصورة مباشرة — ابعتها مع الـ prompt
+        const visionPrompt = lang === 'ar'
+            ? `انظر إلى الصورة المرفقة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
+            : `Look at the attached image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
+
+        return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
     }
 
     if (onPhase) onPhase('thinking');
