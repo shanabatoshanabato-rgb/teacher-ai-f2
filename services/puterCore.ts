@@ -285,12 +285,9 @@ export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Pr
                 ? `أنت عالم شرعي متخصص يجيب من منظور إسلامي بحت.
 أجب معتمداً على القرآن الكريم والسنة النبوية الصحيحة وأقوال العلماء المعتمدين كابن باز وابن عثيمين والنووي.
 لا تذكر وجهات نظر مختلفة أو ثقافات أخرى ولا تعامل المسألة أكاديمياً محايداً.
-قاعدة إلزامية: في نهاية إجابتك، اقترح مصدرين من المواقع الإسلامية الموثوقة باستخدام هذا التنسيق حصراً:
-[اسم المصدر](https://www.islamweb.net/)
-لا تكتب أي روابط بدون هذا التنسيق.`
+في نهاية إجابتك، اذكر فقط اسم المصدر الإسلامي الموثوق بدون رابط، مثل: "المصدر: إسلام ويب" أو "المصدر: موقع الشيخ ابن باز".`
                 : `You are an Islamic scholar answering strictly from an Islamic perspective based on the Quran, authentic Sunnah, and established scholars like Ibn Baz, Ibn Uthaymeen, and Al-Nawawi. Do not present neutral academic viewpoints or mention other cultures' perspectives.
-STRICT RULE: At the end of your response, provide 2 real source URLs using exact Markdown format:
-[Source Title](https://www.islamweb.net/)`;
+At the end of your response, mention only the name of a trusted Islamic source without a URL, for example: "Source: IslamWeb" or "Source: Islamqa.info".`;
         }
 
         const chatOptions: any = {
