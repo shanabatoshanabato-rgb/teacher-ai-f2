@@ -56,7 +56,7 @@ const StudyRoomView: React.FC = () => {
   const [userName, setUserName] = useState('');
   const [roomCode, setRoomCode] = useState('');
   const [isHost, setIsHost] = useState(false);
-  const [userId] = useState(() => Math.random().toString(36).substring(7));
+  const [userId] = useState(() => { const arr = new Uint8Array(8); crypto.getRandomValues(arr); return Array.from(arr, b => b.toString(36)).join('').substring(0, 9); });
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
@@ -135,7 +135,7 @@ const StudyRoomView: React.FC = () => {
     if (!userName) return alert(tx('يرجى إدخال اسمك', 'Please enter your name'));
     setIsLoading(true);
 
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const arr = new Uint8Array(6); crypto.getRandomValues(arr); const code = Array.from(arr, b => (b % 36).toString(36)).join('').toUpperCase();
     const roomDoc = doc(db, 'rooms', code);
 
     await setDoc(roomDoc, {
