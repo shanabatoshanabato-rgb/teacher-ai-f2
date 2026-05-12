@@ -45,11 +45,23 @@ export async function extractPdfText(file: File): Promise<string> {
 
 export async function puterOCR(imageSource: string): Promise<string> {
     try {
-        const extractedText = await puter.ai.img2txt(imageSource);
+        // ✅ استخدم Mistral OCR — أقوى في العربي والمسائل الرياضية
+        const extractedText = await puter.ai.img2txt({
+            source: imageSource,
+            provider: 'mistral',
+            model: 'mistral-ocr-latest'
+        });
         return extractedText || "";
     } catch (error) {
-        console.error("OCR Core Error:", error);
-        return "";
+        console.error("Mistral OCR Error:", error);
+        // Fallback to default OCR
+        try {
+            const fallbackText = await puter.ai.img2txt(imageSource);
+            return fallbackText || "";
+        } catch (e) {
+            console.error("Fallback OCR Error:", e);
+            return "";
+        }
     }
 }
 
@@ -383,28 +395,69 @@ export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (
     if (img) {
         if (onPhase) onPhase('ocr');
 
-        // ✅ STEP 1: شغل OCR الأول عشان تستخرج النص من الصورة
+        // ✅ STEP 1: شغل OCR (Mistral — أقوى في العربي)
         const extracted = await puterOCR(img);
 
         if (extracted && extracted.trim().length > 10) {
-            // ✅ OCR نجح — استخدم النص المستخرج كـ context (مش الصورة)
-            contextInput = `[المسألة المستخرجة من الصورة OCR: "${extracted}"] 
-
- [تعليمات الطالب: "${q}"]`;
+            // ✅ OCR نجح — استخدم النص المستخرج
+            contextInput = `[المسألة المستخرجة من الصورة OCR: "${extracted}"] \n\n [تعليمات الطالب: "${q}"]`;
 
             if (onPhase) onPhase('thinking');
 
+            // ⛔ تعليمات صارمة ضد الاعتذار
+            const antiApologySystem = lang === 'ar' 
+                ? systemInstruction + `\n\n🔴 قاعدة صارمة جداً: النص أدناه في قسم [المسألة المستخرجة من الصورة OCR] هو نص المسألة الفعلي المستخرج من الصورة. أنت لا تحتاج لرؤية الصورة — النص موجود أمامك بالكامل. ممنوع تماماً قول "عذراً" أو "لا أستطيع رؤية" أو "لا يمكنني" أو "صفّر لي المسألة" أو "ولكن يمكنك وصف". اقرأ النص وحله مباشرة بدون أي مقدمات.`
+                : systemInstruction + `\n\n🔴 STRICT RULE: The text below in [OCR EXTRACTED PROBLEM] is the actual problem text extracted from the image. You do NOT need to see the image — the full text is right here. NEVER say "sorry", "I cannot see", "I cannot", "describe the problem", or "but you can describe". Read and solve immediately without any preambles.`;
+
+            // ⛔ كلمات ممنوعة — للفلترة
+            const forbiddenPhrasesAr = [
+                'عذراً', 'لا أستطيع', 'لا يمكنني', 'لا أستطيع رؤية', 
+                'لا يمكنني رؤية', 'صفّر لي', 'وصف المسألة', 'ولكن يمكنك',
+                'أعتذر', 'sorry', 'cannot see', 'cannot view', 
+                'describe the problem', 'provide the details'
+            ];
+
             // ❌ لا ترسل الصورة — بعت النص المستخرج بس
-            return runPuterAgent(
+            let result = await runPuterAgent(
                 `قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, 
-                undefined,  // لا صورة — النص موجود في الـ prompt
+                undefined,  // ⛔ NO IMAGE — text is in the prompt
                 onPhase, 
                 lang, 
                 false, 
-                systemInstruction
+                antiApologySystem
             );
+
+            // 🔄 فلترة الاعتذار — لو لقينا اعتذار، نبعت تاني بضغط أقوى
+            const hasApology = forbiddenPhrasesAr.some(phrase => 
+                result.text.toLowerCase().includes(phrase.toLowerCase())
+            );
+
+            if (hasApology) {
+                console.warn("⚠️ AI apologized! Retrying with stricter prompt...");
+                if (onPhase) onPhase('retrying');
+
+                const strictPrompt = lang === 'ar'
+                    ? `حل هذه المسألة مباشرة بدون أي مقدمات أو اعتذارات: ${extracted}`
+                    : `Solve this problem directly without any preambles or apologies: ${extracted}`;
+
+                const strictSystem = lang === 'ar'
+                    ? antiApologySystem + `\n\n⚠️ تحذير: الإجابة السابقة كانت غير مقبولة لأنها احتوت على اعتذار. هذه محاولة ثانية — يجب الإجابة بحل المسألة فوراً بدون أي كلام إضافي.`
+                    : antiApologySystem + `\n\n⚠️ WARNING: Previous response contained an apology. This is retry #2 — you MUST solve the problem immediately with zero preambles.`;
+
+                result = await runPuterAgent(
+                    strictPrompt,
+                    undefined,
+                    onPhase,
+                    lang,
+                    false,
+                    strictSystem
+                );
+            }
+
+            return result;
+
         } else {
-            // ❌ OCR فشل — حاول ترسل الصورة كـ fallback (vision)
+            // ❌ OCR فشل — حاول ترسل الصورة كـ fallback
             if (onPhase) onPhase('thinking');
             const visionPrompt = lang === 'ar'
                 ? `انظر إلى الصورة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
