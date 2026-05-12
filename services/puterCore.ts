@@ -214,6 +214,141 @@ export async function puterTextLogic(mode: string, input: string, responseLang: 
     return res.text;
 }
 
+export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> => {
+    try {
+        const keywords = q.split(' ').slice(0, 5).join(' ');
+
+        // تعليمات صارمة جداً في الـ system prompt
+        const systemInstruction = lang === 'ar'
+            ? `أنت عالم شرعي إسلامي متخصص. قواعد صارمة:
+1. ممنوع تماماً الاعتذار عن الإجابة.
+2. ممنوع استخدام عبارات "من وجهة نظر عديدة من الديانات" أو "بعض الفلاسفة" - تكلم من منظور إسلامي بحت فقط.
+3. يجب أن تبدأ الإجابة بآية قرآنية تخص الموضوع أو حديث صحيح.
+4. استخدم أداة البحث للبحث في: islamweb.net, islamqa.info, dorar.net, binbaz.org.sa فقط.
+5. في نهاية الإجابة ضع قسم "المصادر والمراجع" يحتوي على الروابط الفعلية.
+6. لا تذكر أي ديانة أخرى. لا تقارن. تكلم عن الإسلام فقط.`
+            : `You are an Islamic scholar. Strict rules:
+1. Never apologize or refuse to answer.
+2. Never use phrases like "from various religious perspectives" or "some philosophers". Speak from an Islamic perspective ONLY.
+3. Start with a relevant Quranic verse or authentic Hadith.
+4. Use web_search ONLY on: islamweb.net, islamqa.info, dorar.net, binbaz.org.sa.
+5. End with a "Sources and References" section with actual links.
+6. Do not mention other religions.`;
+
+        // نغلف السؤال نفسه بتعليمات إضافية عشان المحرك ما يهربش
+        const wrappedQuestion = lang === 'ar'
+            ? `أجب على السؤال التالي من منظور إسلامي بحت، معتمداً على القرآن والسنة فقط. لا تستخدم منظورات فلسفية عامة ولا تقارن بين الأديان. ابدأ بآية أو حديث مناسب:\n\n"${q}"`
+            : `Answer the following from a purely Islamic perspective, relying only on Quran and Sunnah. Do not use general philosophical perspectives or compare religions. Start with a relevant verse or hadith:\n\n"${q}"`;
+
+        const chatOptions: any = {
+            model: 'gpt-4o',
+            system_prompt: systemInstruction,
+            tools: [{ type: 'web_search' }]
+        };
+
+        const response = await puter.ai.chat(wrappedQuestion, chatOptions);
+        let textResponse = response?.message?.content || response?.toString() || '';
+
+        // فلترة الاعتذارات والعبارات الفلسفية العامة
+        const forbiddenPhrasesAr = [
+            'من وجهة نظر عديدة',
+            'الفلاسفة',
+            'اللاهوتيون',
+            'بعض الديانات',
+            'لا يمكنني',
+            'لست متأكداً',
+            'اعتذر',
+            'عذراً',
+            'لا أستطيع'
+        ];
+
+        const forbiddenPhrasesEn = [
+            'from various religious',
+            'philosophers',
+            'theologians',
+            'some religions',
+            'I cannot',
+            'I am not sure',
+            'apologize',
+            'sorry',
+            'I cannot'
+        ];
+
+        const forbiddenPhrases = lang === 'ar' ? forbiddenPhrasesAr : forbiddenPhrasesEn;
+        
+        // لو لقينا عبارة ممنوعة، نرجع نبعت تاني بسؤال أكثر صرامة
+        const hasForbidden = forbiddenPhrases.some(phrase => 
+            textResponse.toLowerCase().includes(phrase.toLowerCase())
+        );
+
+        if (hasForbidden) {
+            // محاولة ثانية بضغط أقوى
+            const strictRetry = lang === 'ar'
+                ? `أجب على هذا السؤال الإسلامي مباشرة بدون مقدمات أو اعتذارات. ابدأ بآية قرآنية ثم اشرح الحكم الشرعي: ${q}`
+                : `Answer this Islamic question directly without preambles or apologies. Start with a Quranic verse then explain the Islamic ruling: ${q}`;
+            
+            const retryResponse = await puter.ai.chat(strictRetry, {
+                model: 'gpt-4o',
+                system_prompt: systemInstruction + '\n\nتحذير: الإجابة السابقة كانت غير مقبولة. يجب الإجابة من منظور إسلامي بحت فوراً.',
+                tools: [{ type: 'web_search' }]
+            });
+            
+            textResponse = retryResponse?.message?.content || retryResponse?.toString() || textResponse;
+        }
+
+        // Extract links
+        const finalLinks = extractLinksFromText(textResponse);
+
+        // إضافة روابط مباشرة وموثوقة
+        const encodedQuery = encodeURIComponent(keywords);
+        
+        // روابط مباشرة لمواقع معروفة
+        const trustedSources = [
+            {
+                title: lang === 'ar' ? 'فتوى في إسلام ويب' : 'Fatwa on Islamweb',
+                url: `https://www.islamweb.net/ar/search?q=${encodedQuery}`,
+                snippet: lang === 'ar' ? 'بحث مباشر في قاعدة بيانات إسلام ويب.' : 'Direct search in Islamweb database.'
+            },
+            {
+                title: lang === 'ar' ? 'فتاوى في الإسلام سؤال وجواب' : 'Islam Q&A',
+                url: `https://islamqa.info/ar/search?query=${encodedQuery}`,
+                snippet: lang === 'ar' ? 'فتاوى الشيخ ابن عثيمين واللجنة الدائمة.' : 'Fatwas by Sheikh Ibn Uthaymeen.'
+            },
+            {
+                title: lang === 'ar' ? 'بحث في موقع ابن باز' : 'Binbaz Website',
+                url: `https://www.binbaz.org.sa/search?query=${encodedQuery}`,
+                snippet: lang === 'ar' ? 'فتاوى الشيخ عبد العزيز بن باز.' : 'Fatwas by Sheikh Bin Baz.'
+            },
+            {
+                title: lang === 'ar' ? 'بحث في الدرر السنية' : 'Dorar Net',
+                url: `https://dorar.net/hadith/search?q=${encodedQuery}`,
+                snippet: lang === 'ar' ? 'الأحاديث النبوية والفتاوى الشرعية.' : 'Prophetic Hadiths and Islamic Rulings.'
+            }
+        ];
+
+        // نضيف الروابط الموثوقة
+        trustedSources.forEach(source => {
+            if (!finalLinks.some(link => link.url.includes(source.url.split('/')[2]))) {
+                finalLinks.push(source);
+            }
+        });
+
+        return {
+            text: textResponse,
+            links: finalLinks
+        };
+
+    } catch (error) {
+        console.error('Islamic Brain Error:', error);
+        return { 
+            text: lang === 'ar' 
+                ? "حدث خطأ في البحث. يرجى المحاولة مرة أخرى." 
+                : "An error occurred. Please try again.", 
+            links: [] 
+        };
+    }
+};
+
 export async function puterWebDiscovery(query: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> {
     const systemPrompt = lang === 'ar'
         ? "أنت باحث ذكي. استخدم أداة البحث بشكل إلزامي للوصول للمعلومات الحية ثم لخصها بوضوح."
@@ -230,57 +365,7 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
     }
 }
 
-export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> => {
-    try {
-        const keywords = q.split(' ').slice(0, 5).join(' ');
-        
-        const systemInstruction = lang === 'ar'
-            ? `أنت عالم شرعي متخصص يجيب من منظور إسلامي بحت معتمداً على القرآن الكريم والسنة النبوية الصحيحة وأقوال العلماء المعتمدين كابن باز وابن عثيمين والنووي.
-استخدم أداة البحث المتاحة لك (web_search) للبحث في المواقع الإسلامية الموثوقة مثل (islamweb.net, islamqa.info, dorar.net, binbaz.org.sa) للإجابة على سؤال المستخدم بدقة.
-ابدأ إجابتك دائماً بآية قرآنية أو حديث نبوي صحيح.
-في نهاية إجابتك، ضع قائمة بالروابط والمصادر التي استخدمتها بوضوح في قسم مستقل بعنوان "المصادر والمراجع".`
-            : `You are an Islamic scholar answering strictly from an Islamic perspective based on the Quran and authentic Sunnah.
-Use the web_search tool to search trusted Islamic websites (islamweb.net, islamqa.info, dorar.net) to provide an accurate answer.
-Start with a Quranic verse or an authentic Hadith.
-At the end of your response, list the URLs and sources used in a section titled "Sources and References".`;
 
-        const chatOptions: any = {
-            model: 'gpt-4o',
-            system_prompt: systemInstruction,
-            tools: [{ type: 'web_search' }]
-        };
-
-        const response = await puter.ai.chat(q, chatOptions);
-        const textResponse = response?.message?.content || response?.toString() || '';
-
-        // Extract links from the AI's response text automatically
-        const finalLinks = extractLinksFromText(textResponse);
-
-        // ALWAYS inject a fall-back Google Search and an Islamweb direct link for the core keywords
-        const encodedQuery = encodeURIComponent(keywords);
-        finalLinks.push({
-            title: lang === 'ar' ? 'بحث إضافي في جوجل' : 'Search more on Google',
-            url: `https://www.google.com/search?q=${encodedQuery}`,
-            snippet: lang === 'ar' ? 'البحث عن مزيد من الفتاوى والمراجع.' : 'Find more fatwas and references.'
-        });
-
-        finalLinks.push({
-            title: lang === 'ar' ? 'بحث متمم في إسلام ويب' : 'Search more on Islamweb',
-            url: `https://www.islamweb.net/ar/search?q=${encodedQuery}`,
-            snippet: lang === 'ar' ? 'البحث المباشر في قاعدة بيانات إسلام ويب.' : 'Direct search in Islamweb database.'
-        });
-
-        // Return the clean response + the links
-        return {
-            text: textResponse,
-            links: finalLinks
-        };
-
-    } catch (error) {
-        console.error('Islamic Brain Error:', error);
-        return { text: "حدث خطأ في البحث. يرجى المحاولة مرة أخرى.", links: [] };
-    }
-};
 
 export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (p: any) => void, lang: 'ar' | 'en' = 'ar') => {
     let contextInput = q;
