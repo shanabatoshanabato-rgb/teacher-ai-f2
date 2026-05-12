@@ -43,26 +43,72 @@ export async function extractPdfText(file: File): Promise<string> {
     }
 }
 
+/**
+ * OCR باستخدام Tesseract.js — مجاني وشغال في البروزر
+ * يدعم العربي + الإنجليزي
+ */
+export async function tesseractOCR(imageSource: string): Promise<string> {
+    try {
+        // Dynamic import للـ tesseract.js
+        const { createWorker } = await import('https://unpkg.com/tesseract.js@5/dist/tesseract.esm.min.js');
+
+        const worker = await createWorker('ara+eng'); // Arabic + English
+        const result = await worker.recognize(imageSource);
+        await worker.terminate();
+
+        return result.data.text || "";
+    } catch (error) {
+        console.error("Tesseract OCR Error:", error);
+        return "";
+    }
+}
+
+/**
+ * Fallback: لو Tesseract مش متاح، استخدم Puter OCR
+ */
 export async function puterOCR(imageSource: string): Promise<string> {
     try {
-        // ✅ استخدم Mistral OCR — أقوى في العربي والمسائل الرياضية
-        const extractedText = await puter.ai.img2txt({
-            source: imageSource,
-            provider: 'mistral',
-            model: 'mistral-ocr-latest'
-        });
+        const extractedText = await puter.ai.img2txt(imageSource);
         return extractedText || "";
     } catch (error) {
-        console.error("Mistral OCR Error:", error);
-        // Fallback to default OCR
-        try {
-            const fallbackText = await puter.ai.img2txt(imageSource);
-            return fallbackText || "";
-        } catch (e) {
-            console.error("Fallback OCR Error:", e);
-            return "";
-        }
+        console.error("Puter OCR Error:", error);
+        return "";
     }
+}
+
+/**
+ * Helper: Convert File/Blob to URL for Tesseract
+ */
+export async function fileToImageUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+/**
+ * OCR شاملة: File → Text (تشتغل مع أي نوع صورة)
+ */
+export async function extractTextFromImage(image: File | string): Promise<string> {
+    let imageSource: string;
+
+    if (typeof image === 'string') {
+        imageSource = image;
+    } else {
+        imageSource = await fileToImageUrl(image);
+    }
+
+    // جرب Tesseract الأول
+    let text = await tesseractOCR(imageSource);
+
+    // لو فشل، جرب Puter
+    if (!text || text.trim().length < 5) {
+        text = await puterOCR(imageSource);
+    }
+
+    return text;
 }
 
 export async function runPuterAgent(
@@ -388,82 +434,64 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
 export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (p: any) => void, lang: 'ar' | 'en' = 'ar') => {
     const mathSystem = `أنت المعلم الشامل في الرياضيات والعلوم. استخدم لغة عربية فصحى وتنسيق LaTeX الاحترافي للمسائل.`;
     const generalSystem = `You are a professional academic tutor. Solve the following problem step-by-step using Proper LaTeX.`;
-    const systemInstruction = lang === 'ar' ? mathSystem : generalSystem;
+    let systemInstruction = lang === 'ar' ? mathSystem : generalSystem;
 
     let contextInput = q;
 
     if (img) {
         if (onPhase) onPhase('ocr');
 
-        // ✅ STEP 1: شغل OCR (Mistral — أقوى في العربي)
-        const extracted = await puterOCR(img);
+        // ✅ STEP 1: Tesseract OCR — استخرج النص من الصورة
+        const extracted = await tesseractOCR(img);
 
         if (extracted && extracted.trim().length > 10) {
-            // ✅ OCR نجح — استخدم النص المستخرج
-            contextInput = `[المسألة المستخرجة من الصورة OCR: "${extracted}"] \n\n [تعليمات الطالب: "${q}"]`;
+            // ✅ OCR نجح — حط النص في الـ prompt
+            contextInput = `[المسألة المستخرجة من الصورة OCR: "${extracted}"] 
+
+ [تعليمات الطالب: "${q}"]`;
 
             if (onPhase) onPhase('thinking');
 
-            // ⛔ تعليمات صارمة ضد الاعتذار
-            const antiApologySystem = lang === 'ar' 
-                ? systemInstruction + `\n\n🔴 قاعدة صارمة جداً: النص أدناه في قسم [المسألة المستخرجة من الصورة OCR] هو نص المسألة الفعلي المستخرج من الصورة. أنت لا تحتاج لرؤية الصورة — النص موجود أمامك بالكامل. ممنوع تماماً قول "عذراً" أو "لا أستطيع رؤية" أو "لا يمكنني" أو "صفّر لي المسألة" أو "ولكن يمكنك وصف". اقرأ النص وحله مباشرة بدون أي مقدمات.`
-                : systemInstruction + `\n\n🔴 STRICT RULE: The text below in [OCR EXTRACTED PROBLEM] is the actual problem text extracted from the image. You do NOT need to see the image — the full text is right here. NEVER say "sorry", "I cannot see", "I cannot", "describe the problem", or "but you can describe". Read and solve immediately without any preambles.`;
+            // ⛔ تعليمات صارمة: النص موجود — حله مباشرة
+            systemInstruction += lang === 'ar' 
+                ? `\n\n🔴 قاعدة صارمة: النص أدناه في [OCR] هو نص المسألة الفعلي المستخرج من الصورة. لا تحتاج لرؤية الصورة. ممنوع "عذراً" أو "لا أستطيع" أو "صفّر لي". اقرأ النص وحله مباشرة.`
+                : `\n\n🔴 STRICT: The [OCR] text below is the actual problem extracted from the image. You do NOT need to see the image. NEVER say "sorry", "I cannot see", or "describe the problem". Read and solve immediately.`;
 
-            // ⛔ كلمات ممنوعة — للفلترة
-            const forbiddenPhrasesAr = [
-                'عذراً', 'لا أستطيع', 'لا يمكنني', 'لا أستطيع رؤية', 
-                'لا يمكنني رؤية', 'صفّر لي', 'وصف المسألة', 'ولكن يمكنك',
-                'أعتذر', 'sorry', 'cannot see', 'cannot view', 
-                'describe the problem', 'provide the details'
-            ];
-
-            // ❌ لا ترسل الصورة — بعت النص المستخرج بس
-            let result = await runPuterAgent(
+            return runPuterAgent(
                 `قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, 
-                undefined,  // ⛔ NO IMAGE — text is in the prompt
+                undefined,  // ⛔ لا صورة — النص في الـ prompt
                 onPhase, 
                 lang, 
                 false, 
-                antiApologySystem
+                systemInstruction
             );
-
-            // 🔄 فلترة الاعتذار — لو لقينا اعتذار، نبعت تاني بضغط أقوى
-            const hasApology = forbiddenPhrasesAr.some(phrase => 
-                result.text.toLowerCase().includes(phrase.toLowerCase())
-            );
-
-            if (hasApology) {
-                console.warn("⚠️ AI apologized! Retrying with stricter prompt...");
-                if (onPhase) onPhase('retrying');
-
-                const strictPrompt = lang === 'ar'
-                    ? `حل هذه المسألة مباشرة بدون أي مقدمات أو اعتذارات: ${extracted}`
-                    : `Solve this problem directly without any preambles or apologies: ${extracted}`;
-
-                const strictSystem = lang === 'ar'
-                    ? antiApologySystem + `\n\n⚠️ تحذير: الإجابة السابقة كانت غير مقبولة لأنها احتوت على اعتذار. هذه محاولة ثانية — يجب الإجابة بحل المسألة فوراً بدون أي كلام إضافي.`
-                    : antiApologySystem + `\n\n⚠️ WARNING: Previous response contained an apology. This is retry #2 — you MUST solve the problem immediately with zero preambles.`;
-
-                result = await runPuterAgent(
-                    strictPrompt,
-                    undefined,
-                    onPhase,
-                    lang,
-                    false,
-                    strictSystem
-                );
-            }
-
-            return result;
-
-        } else {
-            // ❌ OCR فشل — حاول ترسل الصورة كـ fallback
-            if (onPhase) onPhase('thinking');
-            const visionPrompt = lang === 'ar'
-                ? `انظر إلى الصورة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
-                : `Look at the image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
-            return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
         }
+
+        // ❌ Tesseract فشل — جرب Puter OCR fallback
+        console.warn("Tesseract failed, trying Puter OCR...");
+        const puterExtracted = await puterOCR(img);
+
+        if (puterExtracted && puterExtracted.trim().length > 10) {
+            contextInput = `[المسألة المستخرجة من الصورة OCR: "${puterExtracted}"] 
+
+ [تعليمات الطالب: "${q}"]`;
+            if (onPhase) onPhase('thinking');
+            return runPuterAgent(
+                `قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, 
+                undefined,
+                onPhase, 
+                lang, 
+                false, 
+                systemInstruction
+            );
+        }
+
+        // ❌ كل الـ OCR فشل — ابعت الصورة كـ vision (آخر حل)
+        if (onPhase) onPhase('thinking');
+        const visionPrompt = lang === 'ar'
+            ? `انظر إلى الصورة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
+            : `Look at the image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
+        return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
     }
 
     if (onPhase) onPhase('thinking');
