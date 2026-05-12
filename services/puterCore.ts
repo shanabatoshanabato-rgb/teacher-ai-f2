@@ -234,12 +234,24 @@ async function fetchIslamicSources(query: string): Promise<{ links: any[], conte
     try {
         const key = import.meta.env.VITE_GOOGLE_CSE_KEY;
         const cx = import.meta.env.VITE_GOOGLE_CSE_ID;
+
+        if (!key || !cx) {
+            console.error("Islamic Hub Configuration Missing: Check your .env file and ensure keys are prefixed with VITE_");
+            return { links: [], context: "" };
+        }
+
         const url = `https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&q=${encodeURIComponent(query)}&num=5&lr=lang_ar`;
         
         const res = await fetch(url);
         const data = await res.json();
 
+        if (data.error) {
+            console.error("Google Search API Error:", data.error.message);
+            return { links: [], context: "" };
+        }
+
         if (!data?.items || data.items.length === 0) {
+            console.warn("Islamic Hub: No search results found for query:", query);
             return { links: [], context: "" };
         }
 
@@ -257,7 +269,7 @@ async function fetchIslamicSources(query: string): Promise<{ links: any[], conte
 
         return { links, context: snippetsText.join('\n\n') };
     } catch (e) {
-        console.error("Islamic Sources Fetch Error:", e);
+        console.error("Islamic Sources Fetch Critical Error:", e);
         return { links: [], context: "" };
     }
 }
