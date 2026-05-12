@@ -230,41 +230,42 @@ export async function puterVisualGen(prompt: string, style: string): Promise<str
     }
 }
 
-async function fetchWikipediaIslamic(query: string): Promise<{ links: any[], context: string }> {
+async function fetchIslamicSources(query: string): Promise<{ links: any[], context: string }> {
     try {
-        const url = `https://ar.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&utf8=&format=json&origin=*`;
+        const key = import.meta.env.VITE_GOOGLE_CSE_KEY;
+        const cx = import.meta.env.VITE_GOOGLE_CSE_ID;
+        const url = `https://www.googleapis.com/customsearch/v1?key=${key}&cx=${cx}&q=${encodeURIComponent(query)}&num=5&lr=lang_ar`;
+        
         const res = await fetch(url);
         const data = await res.json();
 
-        if (!data?.query?.search || data.query.search.length === 0) {
+        if (!data?.items || data.items.length === 0) {
             return { links: [], context: "" };
         }
 
         const links: any[] = [];
         const snippetsText: string[] = [];
 
-        data.query.search.slice(0, 3).forEach((item: any) => {
-            const articleUrl = `https://ar.wikipedia.org/wiki/${encodeURIComponent(item.title.replace(/ /g, '_'))}`;
-            const cleanSnippet = item.snippet.replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML tags
+        data.items.slice(0, 5).forEach((item: any) => {
             links.push({
                 title: item.title,
-                url: articleUrl,
-                snippet: cleanSnippet
+                url: item.link,
+                snippet: item.snippet
             });
-            snippetsText.push(`[${item.title}]: ${cleanSnippet}`);
+            snippetsText.push(`[${item.title}]: ${item.snippet}`);
         });
 
         return { links, context: snippetsText.join('\n\n') };
     } catch (e) {
-        console.error("Wiki Fetch Error:", e);
+        console.error("Islamic Sources Fetch Error:", e);
         return { links: [], context: "" };
     }
 }
 
 export const puterIslamicBrain = async (q: string, lang: 'ar' | 'en' = 'ar'): Promise<PuterResponse> => {
     try {
-        // 1. Fetch exact real data from Wikipedia
-        const wikiData = await fetchWikipediaIslamic(q);
+        // 1. Fetch exact real data from Islamic Sources
+        const wikiData = await fetchIslamicSources(q);
 
         let systemInstruction = '';
         let contextPrompt = q;
