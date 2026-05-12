@@ -11,6 +11,7 @@ declare const pdfjsLib: any;
 export interface PuterResponse {
     text: string;
     links: { title: string; url: string; snippet?: string }[];
+    ocrText?: string;
 }
 
 let currentAudioElement: HTMLAudioElement | null = null;
@@ -44,20 +45,50 @@ export async function extractPdfText(file: File): Promise<string> {
 }
 
 export async function puterOCR(imageSource: string): Promise<string> {
+    // ── Attempt 1: puter.ai.chat with media field ──
     try {
-        // ✅ استخدم GPT-4o للـ OCR (بيقرا الصورة مباشرة)
         const response = await puter.ai.chat(
-            "Extract all text from this image. Return ONLY the extracted text, nothing else.",
-            {
-                model: 'gpt-4o',
-                media: imageSource
-            }
+            "You are an OCR engine. Extract ALL text visible in this image EXACTLY as written. Include every number, symbol, equation, and word. Return ONLY the raw extracted text — no explanations, no formatting, no markdown.",
+            { model: 'gpt-4o', media: imageSource }
         );
-        return response?.message?.content || response?.toString() || "";
-    } catch (error) {
-        console.error("OCR Core Error:", error);
-        return "";
+        const text = response?.message?.content || response?.toString() || "";
+        if (text && text.length > 5 && !text.toLowerCase().includes("sorry") && !text.toLowerCase().includes("cannot")) {
+            return text;
+        }
+    } catch (e) {
+        console.warn("OCR Attempt 1 failed:", e);
     }
+
+    // ── Attempt 2: puter.ai.chat with images array ──
+    try {
+        const response = await puter.ai.chat(
+            [
+                { role: "user", content: [
+                    { type: "image_url", image_url: { url: imageSource } },
+                    { type: "text", text: "Extract ALL text from this image. Return ONLY the text, nothing else." }
+                ]}
+            ],
+            { model: 'gpt-4o' }
+        );
+        const text = response?.message?.content || response?.toString() || "";
+        if (text && text.length > 5) return text;
+    } catch (e) {
+        console.warn("OCR Attempt 2 failed:", e);
+    }
+
+    // ── Attempt 3: Direct puter.ai.txt2img fallback via vision prompt ──
+    try {
+        const response = await puter.ai.chat(
+            `This is a base64 image containing a homework problem. Describe and extract every piece of text, number, and equation you can see in it. Image data starts with: ${imageSource.substring(0, 50)}...`,
+            { model: 'gpt-4o' }
+        );
+        const text = response?.message?.content || response?.toString() || "";
+        if (text && text.length > 5) return text;
+    } catch (e) {
+        console.warn("OCR Attempt 3 failed:", e);
+    }
+
+    return "";
 }
 
 export async function runPuterAgent(
@@ -383,21 +414,34 @@ export const puterSolve = async (q: string, s: string, img?: string, onPhase?: (
     const generalSystem = `You are a professional academic tutor. Solve the following problem step-by-step using Proper LaTeX.`;
     const systemInstruction = lang === 'ar' ? mathSystem : generalSystem;
 
-    let contextInput = q;
-
     if (img) {
+        // ── Step 1: OCR — extract text from image first ──
+        if (onPhase) onPhase('ocr');
+        const extractedText = await puterOCR(img);
+
+        // ── Step 2: Build solve prompt ──
         if (onPhase) onPhase('thinking');
 
-        // ✅ GPT-4o بيقرا الصورة مباشرة — ابعتها مع الـ prompt
-        const visionPrompt = lang === 'ar'
-            ? `انظر إلى الصورة المرفقة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
-            : `Look at the attached image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
+        if (extractedText && extractedText.length > 5) {
+            // OCR succeeded — solve using extracted text (most reliable)
+            const solvePrompt = lang === 'ar'
+                ? `تم استخراج النص التالي من صورة الواجب:\n\n"${extractedText}"\n\nالمادة: ${s}.\n${q ? `ملاحظة إضافية: ${q}\n` : ''}حل المسألة بالتفصيل خطوة بخطوة.`
+                : `The following text was extracted from a homework image:\n\n"${extractedText}"\n\nSubject: ${s}.\n${q ? `Additional note: ${q}\n` : ''}Solve this step by step in detail.`;
 
-        return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
+            // Also try with the image attached for extra accuracy
+            const result = await runPuterAgent(solvePrompt, img, onPhase, lang, false, systemInstruction);
+            return { ...result, ocrText: extractedText };
+        } else {
+            // OCR failed — send image directly and hope vision works
+            const visionPrompt = lang === 'ar'
+                ? `انظر إلى الصورة المرفقة وحل المسألة الموجودة فيها بالتفصيل. المادة: ${s}. ${q ? `ملاحظة: ${q}` : ''}`
+                : `Look at the attached image and solve the problem in detail. Subject: ${s}. ${q ? `Note: ${q}` : ''}`;
+            return runPuterAgent(visionPrompt, img, onPhase, lang, false, systemInstruction);
+        }
     }
 
     if (onPhase) onPhase('thinking');
-    return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${contextInput}`, undefined, onPhase, lang, false, systemInstruction);
+    return runPuterAgent(`قم بحل مسألة ${s} التالية بالتفصيل: ${q}`, undefined, onPhase, lang, false, systemInstruction);
 };
 
 export async function puterBuildWeb(prompt: string, onPhase?: (p: any) => void) {
