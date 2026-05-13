@@ -1,9 +1,3 @@
-/**
- * ============================================================================
- * 🧠 TEACHER AI - MASTER CORE (ARABIC ENFORCED)
- * ============================================================================
- * Powered exclusively by an Advanced Master AI Engine.
- */
 
 declare const puter: any;
 declare const pdfjsLib: any;
