@@ -199,7 +199,7 @@ const ChatView: React.FC = () => {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+<div className="flex-1 flex flex-col h-full overflow-hidden relative min-h-0">
         
         {/* Mobile Sidebar Toggle Button */}
         <button 
@@ -209,7 +209,7 @@ const ChatView: React.FC = () => {
           <LayoutPanelLeft size={20} />
         </button>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-8 md:px-20 lg:px-32 xl:px-64 py-20 space-y-8 scrollbar-none">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 sm:px-8 md:px-20 lg:px-32 xl:px-64 py-20 space-y-8 scrollbar-thin">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-8 px-4">
               <div className="p-6 bg-indigo-600/10 rounded-[2.5rem] border border-indigo-500/20 shadow-2xl animate-bounce-slow">
